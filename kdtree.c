@@ -187,6 +187,7 @@ void buildTree(MATRIX ds, int liv, int size, int k)
         return;
     }
 
+    printf("\n");
     int cut = liv % k;                             //variabile di cut
     int *indexSorted = malloc(size * sizeof(int)); //vettore che conterra indice riga dei punti ordinati
     quicksort(indexSorted, ds, cut, k, 0, size, 0);
