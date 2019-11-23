@@ -13,7 +13,7 @@ void MyprintArray(MATRIX, int *, int, int, int);
 int partition(MATRIX, int *, int, int, int, int);
 void swap(int *, int *);
 void quicksort(int *, MATRIX, int, int, int, int, int);
-void buildTree(MATRIX, int, int, int);
+struct kdtree_node *buildTree(MATRIX, int *, int, int, int, int);
 
 typedef struct
 {
@@ -178,8 +178,8 @@ void quicksort(int *indexSorted, MATRIX dataset, int cut, int k, int low, int hi
     }
 }
 
-// struct kdtree_node* buildTree(MATRIX ds, int liv, int size, int k)
-void buildTree(MATRIX ds, int liv, int size, int k)
+struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int size, int k, int flagg)
+// void buildTree(MATRIX ds, int *indexSorted, int liv, int size, int k)
 {
     if (size == 0)
     {
@@ -187,14 +187,18 @@ void buildTree(MATRIX ds, int liv, int size, int k)
         return;
     }
 
-    printf("\n");
-    int cut = liv % k;                             //variabile di cut
-    int *indexSorted = malloc(size * sizeof(int)); //vettore che conterra indice riga dei punti ordinati
-    quicksort(indexSorted, ds, cut, k, 0, size, 0);
+    int cut = liv % k; //variabile di cut per indice colonna da usare
+    quicksort(indexSorted, ds, cut, k, 0, size, flagg);
 
+    int indexMedian = indexSorted[size / 2];
     //serve per stampare l'array di indici e i punti associati
-    MyprintArray(ds, indexSorted, size, k, cut);
-    printf("\nval min= %f\tval max= %f\t valore Mediano= %f\n", ds[indexSorted[0] * k + cut], ds[indexSorted[size - 1] * k + cut], ds[indexSorted[size / 2] * k + cut]);
+    // MyprintArray(ds, indexSorted, size, k, cut);
+    // printf("\nval min= %f\tval max= %f\t valore Mediano= %f\n", ds[indexSorted[0] * k + cut], ds[indexSorted[size - 1] * k + cut], ds[indexSorted[size / 2] * k + cut]);
+    kdtree_node *node = malloc(sizeof(kdtree_node));
+    //SUGGERIMENTO: potrebbe bastare memorizzare solo una coordinata invece di tutto il punto con le k coordinate???
+    node->point = &ds[indexMedian];          //in point ci sarà l'indirizzo della prima cella del mediano
+    node->h_min = ds[indexSorted[0]];        //valore di coordinata più piccola
+    node->h_max = ds[indexSorted[size - 1]]; //valore di coordinata più grande
 
     //PSEUDO CODE
     //ordinare colonna dataset[ki] con un metodo  sort
@@ -202,13 +206,16 @@ void buildTree(MATRIX ds, int liv, int size, int k)
     //prendere punto mediano P
     //prendere indici datasset <P e >= P
     // kdtree_node *node = malloc(sizeof(kdtree_node));
+
     // node->point = P mediano
     // node->h_min = bound min
     // node->h_max = bound max
-    // node->left = buildTree(ds, liv + 1, size - 1, k);
-    // node->right = buildTree(ds, liv + 1, size - 1, k);
+    //indexSorted = riferimento prima cella della prima metà di punti
+    // node->left = buildTree(ds, indexSorted, liv + 1, (size / 2), k, 1);
+    //indexSorted + ((size / 2) + 1) = riferimento prima cella della seconda metà di punti
+    // node->right = buildTree(ds, indexSorted + ((size / 2) + 1), liv + 1, (size / 2), k, 1);
 
-    // return node;
+    return node;
 }
 
 /*
@@ -219,8 +226,9 @@ void kdtree(params *input)
 {
     printf("INizio kdtree");
     printf("\ndataset size%d, dataset k%d\n", input->n, input->k);
+    int *indexSorted = malloc(input->n * sizeof(int)); //vettore che conterra indice riga dei punti ordinati
 
-    buildTree(input->ds, 0, input->n, input->k);
+    buildTree(input->ds, indexSorted, 0, input->n, input->k, 0);
 }
 
 int main(int argc, char const *argv[])
