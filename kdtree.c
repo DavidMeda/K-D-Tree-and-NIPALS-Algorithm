@@ -4,17 +4,23 @@
 #include <string.h>
 #include <time.h>
 #include <xmmintrin.h>
+#include <malloc.h>
 
 #define MATRIX float *
 #define KDTREE float * // modificare con il tipo di dato utilizzato
 
+void swap(int *, int *);
+int partition(MATRIX, int *, int, int, int, int);
+int partition1(MATRIX, int *, int *, int, int, int, int);
 int partition2(MATRIX, int *, int, int, int, int);
 void MyprintArray(MATRIX, int *, int, int, int);
-int partition(MATRIX, int *, int, int, int, int);
-void swap(int *, int *);
-void quicksort(int *, MATRIX, int, int, int, int, int);
-struct kdtree_node *buildTree(MATRIX, int *, int, int, int, int);
-
+void quicksort(MATRIX, int *, int, int, int, int, int);
+void quicksort2(MATRIX, int *, int *, int, int, int, int, int);
+int findMedian(MATRIX, int *, int, int, int);
+// struct kdtree_node *buildTreeRoot(MATRIX, int *, int, int, int);
+// struct kdtree_node *buildTree(MATRIX, int *, int *, int, int, int);
+void buildTreeRoot(MATRIX, int *, int, int, int);
+void buildTree(MATRIX, int *, int *, int, int, int);
 typedef struct
 {
     char *filename;     //nome del file, estensione .ds per il data set, estensione .qs per l'eventuale query set
@@ -100,6 +106,22 @@ void MyprintArray(MATRIX ds, int *a, int size, int k, int cut)
         printf("i: %d - %f, ", a[i], ds[a[i] * k + cut]);
         if (i % 10 == 0 && i > 0)
             printf("\n");
+        // if (i == 100)
+        //     break;
+    }
+    printf("\n");
+}
+
+void printArray(int *a, int size)
+{
+    printf("\nInizio a stampare \n");
+    for (int i = 0; i < size; i++)
+    {
+        printf("i: %d - %d ", i, a[i]);
+        if (i % 10 == 0 && i > 0)
+            printf("\n");
+        if (i == 100)
+            break;
     }
     printf("\n");
 }
@@ -110,7 +132,10 @@ void swap(int *a, int *b)
     *a = *b;
     *b = t;
 }
-
+/* 
+*   partition viene usato solo per il nodo root alla prima chiamata
+*   per riempire il vettore degli indici con un ordinamento parziale
+*/
 int partition(MATRIX dataset, int *indexSorted, int low, int high, int k, int cut)
 {
 
@@ -132,15 +157,21 @@ int partition(MATRIX dataset, int *indexSorted, int low, int high, int k, int cu
         }
     }
     //final swap
-    indexSorted[high] = i + 1;
-    indexSorted[i + 1] = high;
+    indexSorted[high - 1] = i + 1;
+    indexSorted[i + 1] = high - 1;
     return (i + 1);
 }
 
-int partition2(MATRIX dataset, int *indexSorted, int low, int high, int k, int cut)
+/*
+*   partition1 viene usato alla prima iterazione per tutti i nodi del kd tree che non sono root
+*   poichè consideriamo solo la parte di punti minori o maggiori della mediana in cui memorizziamo
+*   l'indice in indexSorted, mentre in newIndexSorted ci saranno gli indici dei punti ordinati secondo
+*   un'altra coordinata k
+*/
+int partition1(MATRIX dataset, int *indexSorted, int *newIndexSorted, int low, int high, int k, int cut)
 {
 
-    float pivot = dataset[indexSorted[high] * k + cut];
+    float pivot = dataset[indexSorted[(high - 1)] * k + cut];
     int i = (low - 1);
 
     for (int j = low; j < high; j++)
@@ -148,57 +179,219 @@ int partition2(MATRIX dataset, int *indexSorted, int low, int high, int k, int c
         if (dataset[indexSorted[j] * k + cut] < pivot)
         {
             i++;
-            swap(&indexSorted[i], &indexSorted[j]);
+            //swap
+            newIndexSorted[i] = i;
+            newIndexSorted[j] = j;
+        }
+        else
+        {
+            newIndexSorted[j] = j;
         }
     }
-    swap(&indexSorted[i + 1], &indexSorted[high]);
+    //final swap
+    newIndexSorted[high - 1] = i + 1;
+    newIndexSorted[i + 1] = high - 1;
     return (i + 1);
 }
 
-void quicksort(int *indexSorted, MATRIX dataset, int cut, int k, int low, int high, int flagg)
+/*  
+*   partition2 viene usato dalla seconda iterazione in cui si prende l'indice dei punti da ordinare
+*   nel vettore indexSorted
+*/
+int partition2(MATRIX dataset, int *indexSorted, int low, int high, int k, int cut)
+{
+    // printf("\npartition2   low= %d, high= %d  cut= %d", low, high, cut);
+    // printf("\n indexSorted[hight-1]= %d, high= %d", indexSorted[high - 1], high);
+    // printf("\n indexSorted[hight-1]= %d, high= %d", indexSorted[high], high);
+
+    float pivot = dataset[indexSorted[high - 1] * k + cut];
+    // printf("\narr val pivot= %f, indexSorted[hight-1]= %d, high= %d", pivot, indexSorted[high - 1], high);
+    // printf("\n indexSorted[hight-1]= %d, high= %d", indexSorted[high - 1], high);
+    // printf("\n indexSorted[hight-1]= %d, high= %d\n", indexSorted[high], high);
+    int i = (low - 1);
+    for (int j = low; j < high; j++)
+    {
+        if (dataset[indexSorted[j] * k + cut] < pivot)
+        {
+            i++;
+            // printf("\tindex= %d val= %f", indexSorted[j], dataset[indexSorted[j] * k + cut]);
+            swap(&indexSorted[i], &indexSorted[j]);
+        }
+    }
+    // printf("\n indexSorted= %p", indexSorted);
+    // printf("\n\n");
+    // printf("\ni= %d", i);
+
+    swap(&indexSorted[i + 1], &indexSorted[high - 1]);
+    return (i + 1);
+}
+
+void quicksort2(MATRIX dataset, int *indexSorted, int *newIndexSorted, int cut, int k, int low, int high, int flagg)
+{
+    if (low < high)
+    {
+        // printf("\nflag %d, low= %d, high= %d", flagg, low, high);
+        int indexPivot = -1;
+        if (flagg == 0)
+        {
+            // printf("\nprima del sort 1 parzione\n");
+            // MyprintArray(dataset, indexSorted, high, k, cut);
+            //solo per il nodo root e una sola chiamata
+            //riempio array indice con gli indici ordinati partialmente (solo 1 iterazione)
+            indexPivot = partition1(dataset, indexSorted, newIndexSorted, low, high, k, cut);
+            // printf("\n1 partizione figlio e index pivot= %d", indexPivot);
+            // MyprintArray(dataset, newIndexSorted, high, k, cut);
+            // printf("\nindexSorted:");
+            // printArray(indexSorted, high);
+            // printf("\nnew Index array");
+            // printArray(newIndexSorted, high);
+        }
+        else
+        {
+            // printf("\nseconda partizione figlio");
+            // printf("\n indexSorted= %p", indexSorted);
+            // printf("\n newIdexSorted= %p", newIndexSorted);
+            //  printf("\nindexSorted:");
+            // printArray(indexSorted, high);
+            // printf("\nnew Index array");
+            // printArray(newIndexSorted, high);
+            // printf("\n\n");
+
+            //fatta la prima chiamata ricorsiva
+            //uso come indici quelli memorizzati nell'array parzialemente ordinato
+            indexPivot = partition2(dataset, newIndexSorted, low, high, k, cut);
+        }
+
+        quicksort2(dataset, indexSorted, newIndexSorted, cut, k, low, indexPivot, 1);
+        quicksort2(dataset, indexSorted, newIndexSorted, cut, k, indexPivot + 1, high, 1);
+    }
+}
+
+void quicksort(MATRIX dataset, int *indexSorted, int cut, int k, int low, int high, int flagg)
 {
     if (low < high)
     {
 
-        int pi = -1;
+        int indexPivot = -1;
         if (flagg == 0)
         {
-            //solo la prima volta che chiamo il metodo devo utilizzare il dataset
-            //riempio array indice con gli indici ordinati partialmente (solo 1 itarazione)
-            pi = partition(dataset, indexSorted, low, high, k, cut);
+            //solo per il nodo root e una sola chiamata
+            //riempio array indice con gli indici ordinati partialmente (solo 1 iterazione)
+            indexPivot = partition(dataset, indexSorted, low, high, k, cut);
+            flagg = 1;
         }
         else
         {
             //fatta la prima chiamata ricorsiva
             //uso come indici quelli memorizzati nell'array parzialemente ordinato
-            pi = partition2(dataset, indexSorted, low, high, k, cut);
+            indexPivot = partition2(dataset, indexSorted, low, high, k, cut);
         }
-        quicksort(indexSorted, dataset, cut, k, low, pi - 1, 1);
-        quicksort(indexSorted, dataset, cut, k, pi + 1, high, 1);
+
+        quicksort(dataset, indexSorted, cut, k, low, indexPivot - 1, 1);
+        quicksort(dataset, indexSorted, cut, k, indexPivot + 1, high, 1);
     }
 }
 
-struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int size, int k, int flagg)
-// void buildTree(MATRIX ds, int *indexSorted, int liv, int size, int k)
+int findMedian(MATRIX dataset, int *indexSorted, int indexMedian, int k, int cut)
 {
-    if (size == 0)
+    float median = dataset[indexSorted[indexMedian] * k + cut];
+    for (int i = indexMedian - 1; i >= 0; i--)
     {
-        printf("ERRORE SIZE NULLA");
-        return;
+        if (dataset[indexSorted[i] * k + cut] < median)
+        {
+            printf("\nfind median  val median= %f indexMedianVecchio= %d", median, indexMedian);
+            printf("\nNUOVO  val median= %f  indexMedian= %d valMedian[index-1]= %f  valMedian[index+1]= %f", median, i + 1, dataset[indexSorted[i] * k + cut], dataset[indexSorted[i + 2] * k + cut]);
+            return i + 1;
+        }
     }
+    return -1;
+}
+
+/*
+*   buildTree server per costruire tutti i nodi del kdtree
+*/
+// struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int *newIndexSorted, int liv, int size, int k)
+void buildTree(MATRIX ds, int *indexSorted, int *newIndexSorted, int liv, int size, int k)
+{
+    if (size <= 0)
+    {
+        printf("\nSIZE NULLA\n");
+        // return;
+    }
+    printf("\nCOSTRIUSCO FIGLIO liv= %d, size= %d, \n", liv, size);
 
     int cut = liv % k; //variabile di cut per indice colonna da usare
-    quicksort(indexSorted, ds, cut, k, 0, size, flagg);
 
-    int indexMedian = indexSorted[size / 2];
+    if (cut == 2)
+    {
+        printf("\nFINE\n");
+        return;
+    }
+    MyprintArray(ds, indexSorted, size, k, cut - 1);
+    quicksort2(ds, indexSorted, newIndexSorted, cut, k, 0, size, 0);
+
+    // free(indexSorted);
+    // if (indexSorted == NULL)
+    //     printf("\ndeallocato indexSOrted");
+    //POSSO DEALLOCARE QUI INDEXSORTED PERCHE NON LO UTILIZZO PIU
+    int indexMedian = findMedian(ds, newIndexSorted, size / 2, k, cut);
+    // int indexMedian = newIndexSorted[size / 2];
     //serve per stampare l'array di indici e i punti associati
-    // MyprintArray(ds, indexSorted, size, k, cut);
-    // printf("\nval min= %f\tval max= %f\t valore Mediano= %f\n", ds[indexSorted[0] * k + cut], ds[indexSorted[size - 1] * k + cut], ds[indexSorted[size / 2] * k + cut]);
+
+    // MyprintArray(ds, newIndexSorted, size, k, cut - 1);
+    printf("\nval min= %f\tval max= %f\t valore Mediano= %f", ds[newIndexSorted[0] * k + cut], ds[newIndexSorted[size - 1] * k + cut], ds[newIndexSorted[indexMedian] * k + cut]);
     kdtree_node *node = malloc(sizeof(kdtree_node));
     //SUGGERIMENTO: potrebbe bastare memorizzare solo una coordinata invece di tutto il punto con le k coordinate???
-    node->point = &ds[indexMedian];          //in point ci sarà l'indirizzo della prima cella del mediano
-    node->h_min = ds[indexSorted[0]];        //valore di coordinata più piccola
-    node->h_max = ds[indexSorted[size - 1]]; //valore di coordinata più grande
+    node->point = &ds[indexMedian];             //in point ci sarà l'indirizzo della prima cella del mediano
+    node->h_min = ds[newIndexSorted[0]];        //valore di coordinata più piccola
+    node->h_max = ds[newIndexSorted[size - 1]]; //valore di coordinata più grande
+
+    int newSizeSx = indexMedian + 1;
+    int newSizeDx = size - newSizeSx;
+    int *newIndexSortedSx = malloc(newSizeSx * sizeof(int));
+    int *newIndexSortedDx = malloc(newSizeDx * sizeof(int));
+    printf("\nsize iniziale= %d sizeSX= %d  sizeDX= %d", size, newSizeSx, newSizeDx);
+    if (newIndexSortedDx == NULL | newIndexSortedSx == NULL)
+    {
+        printf("\nNO MEMORIA FIGLI\n");
+        exit(1);
+    }
+    //indexSorted = riferimento prima cella della prima metà di punti
+    buildTree(ds, newIndexSorted, newIndexSortedSx, liv + 1, newSizeSx, k);
+    buildTree(ds, newIndexSorted + (newSizeSx), newIndexSortedDx, liv + 1, newSizeDx, k);
+    // node->left = buildTree(ds, newIndexSorted, newIndexSortedSx, liv + 1, (size / 2), k);
+    //indexSorted + ((size / 2) + 1) = riferimento prima cella della seconda metà di punti
+    // node->right = buildTree(ds, newIndexSorted + ((size / 2) + 1), newIndexSortedSx, liv + 1, (size / 2), k);
+
+    // return node;
+}
+
+/*
+*   buildTreeRoot server per costruire solo la radice del hdtree
+*/
+// struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int size, int k)
+void buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int size, int k)
+{
+    if (size <= 0)
+    {
+        printf("\nSIZE NULLA\n");
+        // return;
+    }
+    printf("\nCOSTRIUSCO RADICE\n");
+    int cut = liv % k; //variabile di cut per indice colonna da usare
+    quicksort(ds, indexSorted, cut, k, 0, size, 0);
+
+    int indexMedian = findMedian(ds, indexSorted, size / 2, k, cut);
+    // int indexMedian = indexSorted[size / 2];
+
+    //serve per stampare l'array di indici e i punti associati
+    // MyprintArray(ds, indexSorted, size, k, cut);
+    printf("\nval min= %f\tval max= %f\t valore Mediano= %f\n", ds[indexSorted[0] * k + cut], ds[indexSorted[size - 1] * k + cut], ds[indexSorted[indexMedian] * k + cut]);
+    kdtree_node *root = malloc(sizeof(kdtree_node));
+    //SUGGERIMENTO: potrebbe bastare memorizzare solo una coordinata invece di tutto il punto con le k coordinate???
+    root->point = &ds[indexMedian];          //in point ci sarà l'indirizzo della prima cella del mediano
+    root->h_min = ds[indexSorted[0]];        //valore di coordinata più piccola
+    root->h_max = ds[indexSorted[size - 1]]; //valore di coordinata più grande
 
     //PSEUDO CODE
     //ordinare colonna dataset[ki] con un metodo  sort
@@ -206,16 +399,29 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int size, in
     //prendere punto mediano P
     //prendere indici datasset <P e >= P
     // kdtree_node *node = malloc(sizeof(kdtree_node));
-
     // node->point = P mediano
     // node->h_min = bound min
     // node->h_max = bound max
+    int newSizeSx = indexMedian + 1;
+    int newSizeDx = size - newSizeSx;
+    int *newIndexSortedSx = malloc(newSizeSx * sizeof(int));
+    int *newIndexSortedDx = malloc(newSizeDx * sizeof(int));
+    printf("\nsize iniziale= %d sizeSX= %d  sizeDX= %d", size, newSizeSx, newSizeDx);
+    if (newIndexSortedDx == NULL | newIndexSortedSx == NULL)
+    {
+        printf("\nNO MEMORIA FIGLI\n");
+        exit(1);
+    }
+    buildTree(ds, indexSorted, newIndexSortedSx, liv + 1, newSizeSx, k);
+    buildTree(ds, indexSorted + (newSizeSx), newIndexSortedDx, liv + 1, newSizeDx, k);
+    // buildTree(ds, indexSorted, newIndexSortedSx, liv + 1, (size / 2), k);
+    // buildTree(ds, indexSorted + (size / 2), newIndexSortedDx, liv + 1, (size / 2), k);
     //indexSorted = riferimento prima cella della prima metà di punti
-    // node->left = buildTree(ds, indexSorted, liv + 1, (size / 2), k, 1);
+    // root->left = buildTree(ds, indexSorted, newIndexSortedSx, liv + 1, (size / 2) - 1, k);
     //indexSorted + ((size / 2) + 1) = riferimento prima cella della seconda metà di punti
-    // node->right = buildTree(ds, indexSorted + ((size / 2) + 1), liv + 1, (size / 2), k, 1);
+    // root->right = buildTree(ds, indexSorted + ((size / 2) + 1), newIndexSortedSx, liv + 1, (size / 2) - 1, k);
 
-    return node;
+    // return root;
 }
 
 /*
@@ -226,9 +432,13 @@ void kdtree(params *input)
 {
     printf("INizio kdtree");
     printf("\ndataset size%d, dataset k%d\n", input->n, input->k);
-    int *indexSorted = malloc(input->n * sizeof(int)); //vettore che conterra indice riga dei punti ordinati
-
-    buildTree(input->ds, indexSorted, 0, input->n, input->k, 0);
+    int *indexSorted = (int *)malloc(input->n * sizeof(int)); //vettore che conterra indice riga dei punti ordinati
+    if (indexSorted == NULL)
+    {
+        printf("\nNO MEMORIA\n");
+        exit(1);
+    }
+    buildTreeRoot(input->ds, indexSorted, 0, input->n, input->k);
 }
 
 int main(int argc, char const *argv[])
