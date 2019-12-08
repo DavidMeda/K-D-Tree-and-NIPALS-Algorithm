@@ -182,21 +182,22 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     // size = size - 1;
     cont++;
     // type=0 nodo sinistro type=1 node destro
-    if (type == 0)
-        printf("\n\nCOSTRIUSCO FIGLIO SINISTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
-    else
-        printf("\n\nCOSTRIUSCO FIGLIO DESTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
+    // if (type == 0)
+    //     printf("\n\nCOSTRIUSCO FIGLIO SINISTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
+    // else
+    //     printf("\n\nCOSTRIUSCO FIGLIO DESTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
 
-    // if (cut == 10)
+    // if (cut == 5)
     // {
     //     // printf("\nFINE\n");
     //     return NULL;
     // }
     quicksort(ds, indexSorted, cut, k, start, end);
 
-    int indexMedian = findMedian(ds, indexSorted, start, (end - 1) / 2, k, cut);
+    int indexMedian = findMedian(ds, indexSorted, start, start + ((end - 1 - start) / 2), k, cut);
 
-    printf("\nvalore MEDIANO= %f\t indexMedian=%d\t val puntoMin= %f\t val puntMax= %f ", ds[indexSorted[indexMedian] * k + cut], indexMedian, ds[indexSorted[start] * k + cut], ds[indexSorted[end - 1] * k + cut]);
+    // if (liv > 4020)
+        // printf("\nvalore MEDIANO= %f\t indexMedian=%d\t val puntoMin= %f\t val puntMax= %f ", ds[indexSorted[indexMedian] * k + cut], indexMedian, ds[indexSorted[start] * k + cut], ds[indexSorted[end - 1] * k + cut]);
 
     struct kdtree_node *node = (struct kdtree_node *)malloc(sizeof(struct kdtree_node));
     //SUGGERIMENTO: potrebbe bastare memorizzare solo una coordinata invece di tutto il punto con le k coordinate??? RISPOSTA SI.
@@ -212,7 +213,7 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     node->h_max = ds[indexSorted[end - 1] * k + cut]; //valore di coordinata più grande
     int newSizeSx = indexMedian - start;
     int newSizeDx = end - indexMedian;
-    printf("\nsizeSX= %d  sizeDX= %d", newSizeSx, newSizeDx - 1);
+    // printf("\nsizeSX= %d  sizeDX= %d", newSizeSx, newSizeDx - 1);
     // if (numEle <= 0)
     // {
     //     printf("\nSIZE NULLA\n");
@@ -221,7 +222,7 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     if (newSizeSx == 0 && newSizeDx - 1 == 0)
     {
 
-        printf("\nNODO FOGLIA");
+        // printf("\nNODO FOGLIA");
         node->left = NULL;
         node->right = NULL;
         return NULL;
@@ -268,7 +269,7 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
     // MyprintArray(ds, indexSorted, 0, size, k, cut);
     int indexMedian = findMedian(ds, indexSorted, 0, (end - 1) / 2, k, cut);
 
-    printf("\nvalore MEDIANO= %f\t indexMedian=%d\t val puntoMin= %f\t val puntMax= %f ", ds[indexSorted[indexMedian] * k + cut], indexMedian, ds[indexSorted[0] * k + cut], ds[indexSorted[end - 1] * k + cut]);
+    // printf("\nvalore MEDIANO= %f\t indexMedian=%d\t val puntoMin= %f\t val puntMax= %f ", ds[indexSorted[indexMedian] * k + cut], indexMedian, ds[indexSorted[0] * k + cut], ds[indexSorted[end - 1] * k + cut]);
     struct kdtree_node *root = (struct kdtree_node *)malloc(sizeof(struct kdtree_node));
     //SUGGERIMENTO: potrebbe bastare memorizzare solo una coordinata invece di tutto il punto con le k coordinate???
     root->point = ds[indexMedian * k + cut];
@@ -284,7 +285,7 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
     int newSizeSx = indexMedian;
     int newSizeDx = end - newSizeSx;
 
-    printf("\nsizeSX= %d  sizeDX= %d", newSizeSx, newSizeDx);
+    // printf("\nsizeSX= %d  sizeDX= %d", newSizeSx, newSizeDx);
     root->left = buildTree(ds, indexSorted, liv + 1, 0, indexMedian, newSizeSx, k, 0);
     root->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, newSizeDx - 1, k, 1);
 
