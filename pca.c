@@ -64,25 +64,6 @@ void dealloc_matrix(MATRIX mat)
     free_block(mat);
 }
 
-/*
-* 
-* 	load_data
-* 	=========
-* 
-*	Legge da file una matrice di N righe
-* 	e M colonne e la memorizza in un array lineare in row-major order
-* 
-* 	Codifica del file:
-* 	primi 4 byte: numero di righe (N) --> numero intero a 32 bit
-* 	successivi 4 byte: numero di colonne (M) --> numero intero a 32 bit
-* 	successivi N*M*4 byte: matrix data in row-major order --> numeri floating-point a precisione singola
-* 
-*****************************************************************************
-*	Se lo si ritiene opportuno, è possibile cambiare la codifica in memoria
-* 	della matrice. 
-*****************************************************************************
-* 
-*/
 MATRIX load_data(char *filename, int *n, int *k)
 {
     FILE *fp;
@@ -109,39 +90,6 @@ MATRIX load_data(char *filename, int *n, int *k)
     return data;
 }
 
-/*
-* 
-* 	save_data
-* 	=========
-* 
-*	Salva su file un array lineare in row-major order
-*	come matrice di N righe e M colonne
-* 
-* 	Codifica del file:
-* 	primi 4 byte: numero di righe (N) --> numero intero a 32 bit
-* 	successivi 4 byte: numero di colonne (M) --> numero intero a 32 bit
-* 	successivi N*M*4 byte: matrix data in row-major order --> numeri interi o floating-point a precisione singola
-* 
-*/
-void save_data(char *filename, void *X, int n, int k)
-{
-    FILE *fp;
-    int i;
-    fp = fopen(filename, "wb");
-    if (X != NULL)
-    {
-        fwrite(&n, 4, 1, fp);
-        fwrite(&k, 4, 1, fp);
-        for (i = 0; i < n; i++)
-        {
-            fwrite(X, 4, k, fp);
-            //printf("%i %i\n", ((int*)X)[0], ((int*)X)[1]);
-            X += 4 * k;
-        }
-    }
-    fclose(fp);
-}
-
 // PROCEDURE ASSEMBLY
 // extern void prova(params* input);
 
@@ -150,9 +98,15 @@ void centraMatrice(params *input)
 
     for (int j = 0; j < input->k; j++)
     {
-
+        float acc = 0;
         for (int i = 0; i < input->n; i++)
         {
+            acc += input->ds[i * input->k + j];
+        }
+        float mean = acc / input->n;
+        for (int i = 0; i < input->n; i++)
+        {
+            input->ds[i * input->k + j] = input->ds[i * input->k + j] - mean;
         }
     }
 }
@@ -358,10 +312,10 @@ int main(int argc, char **argv)
         pca(input);
         t = clock() - t;
         time = ((float)t) / CLOCKS_PER_SEC;
-        sprintf(fname, "%s.U", input->filename);
-        save_data(fname, input->U, input->n, input->h);
-        sprintf(fname, "%s.V", input->filename);
-        save_data(fname, input->V, input->k, input->h);
+        // sprintf(fname, "%s.U", input->filename);
+        // save_data(fname, input->U, input->n, input->h);
+        // sprintf(fname, "%s.V", input->filename);
+        // save_data(fname, input->V, input->k, input->h);
     }
     else
         time = -1;

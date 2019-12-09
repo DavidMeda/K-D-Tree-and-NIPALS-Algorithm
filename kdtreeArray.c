@@ -205,32 +205,33 @@ struct kdtree_node *buildTree(MATRIX ds, struct kdtree_node *arrayTree, int inde
     arrayTree[index]->indexFatherVector = (index - 1) / 2;
     arrayTree[index]->indexMedianPoint = indexSorted[indexMedian];
 
+    //stampa le prima 10 coordinate del punto
     // printf("\nPunto del nodo:  ");
     // for (int i = 0; i < 10; i++)
     // {
     //     printf("%f, ", ds[indexSorted[indexMedian] * k + i]);
     // }
-    int newSizeSx = indexMedian - start;
-    int newSizeDx = end - indexMedian;
+    int numEleSx = indexMedian - start;
+    int numEleDx = end - indexMedian;
     // printf("\nsizeSX= %d  sizeDX= %d", newSizeSx, newSizeDx - 1);
-    if (newSizeSx == 0 && newSizeDx - 1 == 0)
+    if (numEleSx == 0 && numEleDx - 1 == 0)
     {
         return NULL;
     }
-    else if (newSizeSx == 0)
+    else if (numEleSx == 0)
     {
-        buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, newSizeDx - 1, k, 1);
+        buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, numEleDx - 1, k, 1);
         return arrayTree;
     }
-    else if (newSizeDx - 1 == 0)
+    else if (numEleDx - 1 == 0)
     {
-        buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, start, indexMedian, newSizeSx - 1, k, 0);
+        buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, start, indexMedian, numEleSx - 1, k, 0);
         return arrayTree;
     }
     else
     {
-        buildTree(ds, arrayTree, (2 * index) + 1, indexSorted, liv + 1, start, indexMedian, newSizeSx, k, 0);
-        buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, newSizeDx - 1, k, 1);
+        buildTree(ds, arrayTree, (2 * index) + 1, indexSorted, liv + 1, start, indexMedian, numEleSx, k, 0);
+        buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, numEleDx - 1, k, 1);
         return arrayTree;
     }
 }
@@ -269,12 +270,12 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, struct kdtree_node *arrayTree, int 
     arrayTree[index]->indexFatherVector = index;
     arrayTree[index]->indexMedianPoint = indexSorted[indexMedian];
 
-    int newSizeSx = indexMedian;
-    int newSizeDx = end - newSizeSx;
+    int numEleSx = indexMedian;
+    int numEleDx = end - indexMedian;
 
     // printf("\nsizeSX= %d  sizeDX= %d", newSizeSx, newSizeDx);
-    buildTree(ds, arrayTree, (2 * index) + 1, indexSorted, liv + 1, 0, indexMedian, newSizeSx, k, 0);
-    buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, newSizeDx - 1, k, 1);
+    buildTree(ds, arrayTree, (2 * index) + 1, indexSorted, liv + 1, 0, indexMedian, numEleDx, k, 0);
+    buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, numEleDx - 1, k, 1);
 
     return arrayTree;
 }
