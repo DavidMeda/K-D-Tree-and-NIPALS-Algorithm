@@ -192,6 +192,7 @@ void verificaord(float *ds, int size, int k)
         };
     printf("controllo: %i\n", tmp);
 }
+
 kdtree_node *builtree(float *ds, int liv, int k, int head, int tail)
 {
     /*crea un albero con il concetto della programmazione ad oggetti, memorizzando il nodo corrente su un vettori e i riferimenti ai figli
@@ -204,7 +205,6 @@ kdtree_node *builtree(float *ds, int liv, int k, int head, int tail)
         printf("Memoria insufficiente per allocare il nodo\n");
         exit(-1);
     }
-
     int n = ((tail - head) + 1) / k;
     if (n <= 0)
     {
