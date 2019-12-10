@@ -39,12 +39,12 @@ typedef struct
     int nQA; //numero di risposte alle query
 } params;
 
-struct
+struct kdtree_node
 {
     float median; //median coordinata
-    float k_min, k_max;
-    int indexVector, indexFatherVector, indexMedianPoint;
-} kdtree_node;
+    float h_min, h_max;
+    int indexMedianPoint;
+};
 
 void *get_block(int size, int elements)
 {
@@ -162,14 +162,14 @@ void quicksort(MATRIX dataset, int *indexSorted, int cut, int k, int low, int hi
 int findMedian(MATRIX dataset, int *indexSorted, int start, int indexMedian, int k, int cut)
 {
     float median = dataset[indexSorted[indexMedian] * k + cut];
-    for (int i = indexMedian - 1; i > start; i--)
+    for (int i = indexMedian - 1; i >= start; i--)
     {
         if (dataset[indexSorted[i] * k + cut] < median)
         {
             return i + 1;
         }
     }
-    return start;
+    return indexMedian;
 }
 int cont = 1;
 /*
@@ -182,10 +182,10 @@ struct kdtree_node *buildTree(MATRIX ds, struct kdtree_node *arrayTree, int inde
     int cut = liv % k; //variabile di cut per indice colonna da usare
     cont++;
     // type=0 nodo sinistro type=1 node destro
-    if (type == 0)
-        printf("\n\nCOSTRIUSCO FIGLIO SINISTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
-    else
-        printf("\n\nCOSTRIUSCO FIGLIO DESTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
+    // if (type == 0)
+    //     printf("\n\nCOSTRIUSCO FIGLIO SINISTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d index = %d", liv, start, end, cut, numEle, cont, index);
+    // else
+    //     printf("\n\nCOSTRIUSCO FIGLIO DESTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d index = %d", liv, start, end, cut, numEle, cont, index);
 
     // if (cut == 5)
     // {
@@ -195,15 +195,11 @@ struct kdtree_node *buildTree(MATRIX ds, struct kdtree_node *arrayTree, int inde
     quicksort(ds, indexSorted, cut, k, start, end);
 
     int indexMedian = findMedian(ds, indexSorted, start, start + ((end - 1 - start) / 2), k, cut);
-
     // printf("\nvalore MEDIANO= %f\t indexMedian=%d\t val puntoMin= %f\t val puntMax= %f ", ds[indexSorted[indexMedian] * k + cut], indexMedian, ds[indexSorted[start] * k + cut], ds[indexSorted[end - 1] * k + cut]);
-
-    // struct kdtree_node *node = (struct kdtree_node *)malloc(sizeof(struct kdtree_node));
-    arrayTree[index]->median = ds[indexSorted[indexMedian] * k + cut];
-    arrayTree[index]->k_min = ds[indexSorted[start] * k + cut];   //valore di coordinata più piccola
-    arrayTree[index]->k_max = ds[indexSorted[end - 1] * k + cut]; //valore di coordinata più piccola
-    arrayTree[index]->indexFatherVector = (index - 1) / 2;
-    arrayTree[index]->indexMedianPoint = indexSorted[indexMedian];
+    arrayTree[index].median = ds[indexSorted[indexMedian] * k + cut];
+    arrayTree[index].h_min = ds[indexSorted[start] * k + cut];   //valore di coordinata più piccola
+    arrayTree[index].h_max = ds[indexSorted[end - 1] * k + cut]; //valore di coordinata più piccola
+    arrayTree[index].indexMedianPoint = indexSorted[indexMedian];
 
     //stampa le prima 10 coordinate del punto
     // printf("\nPunto del nodo:  ");
@@ -212,26 +208,26 @@ struct kdtree_node *buildTree(MATRIX ds, struct kdtree_node *arrayTree, int inde
     //     printf("%f, ", ds[indexSorted[indexMedian] * k + i]);
     // }
     int numEleSx = indexMedian - start;
-    int numEleDx = end - indexMedian;
+    int numEleDx = end - indexMedian - 1;
     // printf("\nsizeSX= %d  sizeDX= %d", newSizeSx, newSizeDx - 1);
-    if (numEleSx == 0 && numEleDx - 1 == 0)
+    if (numEleSx == 0 && numEleDx == 0)
     {
         return NULL;
     }
     else if (numEleSx == 0)
     {
-        buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, numEleDx - 1, k, 1);
+        buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1);
         return arrayTree;
     }
-    else if (numEleDx - 1 == 0)
+    else if (numEleDx == 0)
     {
-        buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, start, indexMedian, numEleSx - 1, k, 0);
+        buildTree(ds, arrayTree, (2 * index) + 1, indexSorted, liv + 1, start, indexMedian, numEleSx, k, 0);
         return arrayTree;
     }
     else
     {
         buildTree(ds, arrayTree, (2 * index) + 1, indexSorted, liv + 1, start, indexMedian, numEleSx, k, 0);
-        buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, numEleDx - 1, k, 1);
+        buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1);
         return arrayTree;
     }
 }
@@ -257,25 +253,24 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, struct kdtree_node *arrayTree, int 
     int indexMedian = findMedian(ds, indexSorted, 0, (end - 1) / 2, k, cut);
 
     // printf("\nvalore MEDIANO= %f\t indexMedian=%d\t val puntoMin= %f\t val puntMax= %f ", ds[indexSorted[indexMedian] * k + cut], indexMedian, ds[indexSorted[0] * k + cut], ds[indexSorted[end - 1] * k + cut]);
-    // struct kdtree_node *root = (struct kdtree_node *)malloc(sizeof(kdtree_node));
     // root->point = &ds[indexMedian]; //in point ci sarà l'indirizzo della prima cella del mediano
     // printf("\nPunto del nodo:  ");
     // for (int i = 0; i < 10; i++)
     // {
     //     printf("%f, ", ds[indexSorted[indexMedian] * k + i]);
     // }
-    arrayTree[index]->median = ds[indexSorted[indexMedian] * k + cut];
-    arrayTree[index]->k_min = ds[indexSorted[0] * k + cut];       //valore di coordinata più piccola
-    arrayTree[index]->k_max = ds[indexSorted[end - 1] * k + cut]; //valore di coordinata più grande
-    arrayTree[index]->indexFatherVector = index;
-    arrayTree[index]->indexMedianPoint = indexSorted[indexMedian];
+
+    arrayTree[index].median = ds[indexSorted[indexMedian] * k + cut];
+    arrayTree[index].h_min = ds[indexSorted[0] * k + cut];       //valore di coordinata più piccola
+    arrayTree[index].h_max = ds[indexSorted[end - 1] * k + cut]; //valore di coordinata più grande
+    arrayTree[index].indexMedianPoint = indexSorted[indexMedian];
 
     int numEleSx = indexMedian;
-    int numEleDx = end - indexMedian;
+    int numEleDx = end - indexMedian - 1;
 
-    // printf("\nsizeSX= %d  sizeDX= %d", newSizeSx, newSizeDx);
-    buildTree(ds, arrayTree, (2 * index) + 1, indexSorted, liv + 1, 0, indexMedian, numEleDx, k, 0);
-    buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, numEleDx - 1, k, 1);
+    // printf("\nsizeSX= %d  sizeDX= %d", numEleSx, numEleDx);
+    buildTree(ds, arrayTree, (2 * index) + 1, indexSorted, liv + 1, 0, indexMedian, numEleSx, k, 0);
+    buildTree(ds, arrayTree, (2 * index) + 2, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1);
 
     return arrayTree;
 }
@@ -289,7 +284,8 @@ void kdtree(params *input)
     printf("\nInizio kdtree");
     // printf("\ndataset size%d, dataset k%d\n", input->n, input->k);
     int *indexSorted = (int *)malloc(input->n * sizeof(int)); //vettore che conterra indice riga dei punti ordinati
-    struct kdtree_node *arrayTree = (struct kdtree_node *)malloc(input->n * sizeof(kdtree_node));
+    struct kdtree_node *arrayTree = (struct kdtree_node *)malloc(input->n * input->n * sizeof(struct kdtree_node));
+
     if (indexSorted == NULL || arrayTree == NULL)
     {
         printf("\nNO MEMORIA\n");
@@ -300,6 +296,8 @@ void kdtree(params *input)
         indexSorted[i] = i;
     }
     buildTreeRoot(input->ds, arrayTree, 0, indexSorted, 0, input->n, input->k);
+    //bisogna liberare la memoria
+    free(indexSorted);
 }
 
 int main(int argc, char const *argv[])

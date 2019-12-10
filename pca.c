@@ -93,20 +93,20 @@ MATRIX load_data(char *filename, int *n, int *k)
 // PROCEDURE ASSEMBLY
 // extern void prova(params* input);
 
-void centraMatrice(params *input)
+void centraMatrice(MATRIX ds, int n, int k)
 {
 
-    for (int j = 0; j < input->k; j++)
+    for (int j = 0; j < k; j++)
     {
         float acc = 0;
-        for (int i = 0; i < input->n; i++)
+        for (int i = 0; i < n; i++)
         {
-            acc += input->ds[i * input->k + j];
+            acc += ds[i * k + j];
         }
-        float mean = acc / input->n;
-        for (int i = 0; i < input->n; i++)
+        float mean = acc / n;
+        for (int i = 0; i < n; i++)
         {
-            input->ds[i * input->k + j] = input->ds[i * input->k + j] - mean;
+            ds[i * k + j] = ds[i * k + j] - mean;
         }
     }
 }
@@ -118,7 +118,8 @@ void centraMatrice(params *input)
 void pca(params *input)
 {
 
-    centraMatrice(input);
+    centraMatrice(input->ds, input->n, input->k);
+    float theta = 1 * exp(-8);
 
     // -------------------------------------------------
     // Codificare qui l'algoritmo PCA

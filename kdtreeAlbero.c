@@ -162,14 +162,14 @@ void quicksort(MATRIX dataset, int *indexSorted, int cut, int k, int low, int hi
 int findMedian(MATRIX dataset, int *indexSorted, int start, int indexMedian, int k, int cut)
 {
     float median = dataset[indexSorted[indexMedian] * k + cut];
-    for (int i = indexMedian - 1; i > start; i--)
+    for (int i = indexMedian - 1; i >= start; i--)
     {
         if (dataset[indexSorted[i] * k + cut] < median)
         {
             return i + 1;
         }
     }
-    return start;
+    return indexMedian;
 }
 //contatore per il debug
 int cont = 1;
@@ -184,10 +184,10 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     int cut = liv % k; //variabile di cut per indice colonna da usare
     cont++;
     // type = 0 nodo sinistro, type = 1 node destro (serve per il debug)
-    if (type == 0)
-        printf("\n\nCOSTRIUSCO FIGLIO SINISTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
-    else
-        printf("\n\nCOSTRIUSCO FIGLIO DESTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
+    // if (type == 0)
+    //     printf("\n\nCOSTRIUSCO FIGLIO SINISTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
+    // else
+    //     printf("\n\nCOSTRIUSCO FIGLIO DESTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
 
     //serve per il debug
     // if (cut == 5)
@@ -199,7 +199,7 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
 
     int indexMedian = findMedian(ds, indexSorted, start, start + ((end - 1 - start) / 2), k, cut);
 
-    printf("\nvalore MEDIANO= %f\t indexMedian=%d\t val puntoMin= %f\t val puntMax= %f ", ds[indexSorted[indexMedian] * k + cut], indexMedian, ds[indexSorted[start] * k + cut], ds[indexSorted[end - 1] * k + cut]);
+    // printf("\nvalore MEDIANO= %f\t indexMedian=%d\t val puntoMin= %f\t val puntMax= %f ", ds[indexSorted[indexMedian] * k + cut], indexMedian, ds[indexSorted[start] * k + cut], ds[indexSorted[end - 1] * k + cut]);
 
     //SUGGERIMENTO: potrebbe bastare memorizzare solo una coordinata invece di tutto il punto con le k coordinate??? RISPOSTA SI.
     struct kdtree_node *node = (struct kdtree_node *)malloc(sizeof(struct kdtree_node));
@@ -214,7 +214,7 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     // }
     int numEleSx = indexMedian - start;
     int numEleDx = end - indexMedian - 1;
-    printf("\nsizeSX= %d  sizeDX= %d", numEleSx, numEleDx);
+    // printf("\nsizeSX= %d  sizeDX= %d", numEleSx, numEleDx);
 
     if (numEleSx == 0 && numEleDx == 0)
     {
@@ -303,6 +303,8 @@ void kdtree(params *input)
         indexSorted[i] = i;
     }
     input->kdtree = buildTreeRoot(input->ds, indexSorted, 0, input->n, input->k);
+    //bisogna liberare la memoria
+    free(indexSorted);
 }
 
 int main(int argc, char const *argv[])
