@@ -197,9 +197,9 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     // printf("  puntoMin= %f  val puntMax= %f ", ds[indexSorted[start] * k + cut - 1], ds[indexSorted[end - 1] * k + cut - 1]);
 
     //serve per il debug
-    // if (cut == 2)
+    // if (cut == 5)
     // {
-    //     // printf("\nFINE\n");
+    //     printf("\nFINE\n");
     //     return NULL;
     // }
     quicksort(ds, indexSorted, cut, k, start, end);
