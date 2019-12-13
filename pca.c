@@ -111,6 +111,16 @@ void centraMatrice(MATRIX ds, int n, int k)
     }
 }
 
+float calcolaProdTrasp(float *a,float *b, int size)
+{
+    int i;
+    float res =0;
+    for (i = 0; i < size; i++)
+    {
+        res+= 
+    }
+}
+
 /*
 *	PCA
 * 	=====================
@@ -120,6 +130,23 @@ void pca(params *input)
 
     centraMatrice(input->ds, input->n, input->k);
     float theta = 1 * exp(-8);
+    input->V = malloc(input->k * input->h);
+    input->U = malloc(input->h * input->n);
+
+    /*
+    sia u la prima colonna di D
+    for j ∈ [0, h) do
+    v = (X Tras · u)/(u trasp · u)// Calcola il vettore dei load
+    v = v/norm(v)// Normalizza il vettore dei load
+    t = u T · u
+    u = (D · v)/(v T · v)// Aggiorna il vettore degli score
+    t ′ = u T · u
+    if abs(t ′ − t) >= θ · t ′ then
+    goto line 5
+    inserisci u come j-esima colonna di U
+    inserisci v come j-esima colonna di V
+    D = D − u · v T // Aggiorna il dataset
+    */
 
     // -------------------------------------------------
     // Codificare qui l'algoritmo PCA
