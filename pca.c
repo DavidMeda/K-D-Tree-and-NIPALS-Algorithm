@@ -111,13 +111,73 @@ void centraMatrice(MATRIX ds, int n, int k)
     }
 }
 
-float calcolaProdTrasp(float *a,float *b, int size)
+float calcolaT(float *a, int n, int k, int cut)
 {
     int i;
-    float res =0;
-    for (i = 0; i < size; i++)
+    float res = 0;
+    for (i = 0; i < n; i++)
     {
-        res+= 
+        res += powf(a[i * k + cut], 2);
+    }
+    return res;
+}
+
+//per dataset transposto rigaA=k, colA=n e rigaB=n;
+
+void prodottoMatrice(float *result, int col, int cut, MATRIX ds, int riga, int colB, float *vect)
+{
+    // float *result = malloc( colA* sizeof(float)); //dimensione n
+    int c, d, e;
+    float sum = 0;
+    for (c = 0; c < riga; c++)
+    {
+        for (d = 0; d < colB; d++)
+        {
+            for (e = 0; e < colB; e++)
+            {
+
+                sum += ds[e * colB + c] * vect[d * col + cut];
+            }
+
+            result[d * col + cut] = sum;
+            sum = 0;
+        }
+    }
+    return result;
+}
+
+float norma(float *v, int numRig, int numCol, int cut)
+{
+    float acc;
+    int i;
+    for (i = 0; i < numRig; i++)
+    {
+        acc += pow(v[i * numCol + cut], 2);
+    }
+    return sqrtf(acc);
+}
+
+void dividi(float *v, int numRig, int numCol, int cut, float norm)
+{
+
+    int i;
+    for (i = 0; i < numRig; i++)
+    {
+        v[i * numCol + i] = v[i * numCol + i] / norm;
+    }
+}
+
+void aggiornaDataset(MATRIX ds, int numRig, int numCol, float *u, float *v, int h, int cut)
+{
+
+    float res;
+    int m, i, j;
+    for (m = 0; m < numRig; m++)
+    {
+        for (i = 0; i < numCol; i++)
+        {
+            ds[m * numRig + i] -= u[m * h + cut] * v[i * h + cut];
+        }
     }
 }
 
@@ -130,30 +190,35 @@ void pca(params *input)
 
     centraMatrice(input->ds, input->n, input->k);
     float theta = 1 * exp(-8);
-    input->V = malloc(input->k * input->h);
-    input->U = malloc(input->h * input->n);
+    input->V = malloc(input->k * input->h); //dimensioni (k x h)
+    input->U = malloc(input->n * input->h); // dimensioni (n x h)
+    int i;
+    for (i = 0; i < input->n; i++)
+    {
+        input->U[i * input->h] = input->ds[i * input->k];
+    }
+    int i, t, t1;
+    float norm, tempV;
+    for (i = 0; i < input->h; i++)
+    {
+        do
+        {
+            prodottoMatrice(input->V, input->k, i, input->ds, input->k, input->n, input->U);
 
-    /*
-    sia u la prima colonna di D
-    for j ∈ [0, h) do
-    v = (X Tras · u)/(u trasp · u)// Calcola il vettore dei load
-    v = v/norm(v)// Normalizza il vettore dei load
-    t = u T · u
-    u = (D · v)/(v T · v)// Aggiorna il vettore degli score
-    t ′ = u T · u
-    if abs(t ′ − t) >= θ · t ′ then
-    goto line 5
-    inserisci u come j-esima colonna di U
-    inserisci v come j-esima colonna di V
-    D = D − u · v T // Aggiorna il dataset
-    */
+            t = calcolaT(input->U, input->n, input->h, i);
+            dividi(input->V, input->k, input->h, i, t);
+            norm = norma(input->V, input->k, input->h, i);
+            dividi(input->V, input->k, input->h, i, norm);
 
-    // -------------------------------------------------
-    // Codificare qui l'algoritmo PCA
-    // -------------------------------------------------
-    //prova(input);
-    // Calcola le matrici U e V
-    // -------------------------------------------------
+            prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, input->V);
+            tempV = calcolaT(input->V, input->k, input->h, i);
+            dividi(input->U, input->n, input->h, i, tempV);
+            t1 = calcolaT(input->U, input->n, input->h, i);
+
+        } while (t1 - t1 >= theta * t1);
+
+        aggiornaDataset(input->ds, input->n, input->k, input->U, input->V, input->h, i);
+    }
 }
 
 int main(int argc, char **argv)

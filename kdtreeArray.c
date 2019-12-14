@@ -135,7 +135,8 @@ int partition(MATRIX dataset, int *indexSorted, int low, int high, int k, int cu
 {
     float pivot = dataset[indexSorted[high - 1] * k + cut];
     int i = (low - 1);
-    for (int j = low; j < high - 1; j++)
+    int j;
+    for (j = low; j < high - 1; j++)
     {
         if (dataset[indexSorted[j] * k + cut] < pivot)
         {
@@ -167,7 +168,8 @@ void quicksort(MATRIX dataset, int *indexSorted, int cut, int k, int low, int hi
 int findMedian(MATRIX dataset, int *indexSorted, int start, int indexMedian, int k, int cut)
 {
     float median = dataset[indexSorted[indexMedian] * k + cut];
-    for (int i = indexMedian - 1; i >= start; i--)
+    int i;
+    for (i = indexMedian - 1; i >= start; i--)
     {
         if (dataset[indexSorted[i] * k + cut] < median)
         {
@@ -192,7 +194,7 @@ struct kdtree_node *buildTree(MATRIX ds, struct kdtree_node *arrayTree, int inde
     //     printf("\n\nCOSTRIUSCO FIGLIO SINISTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
     // else
     //     printf("\n\nCOSTRIUSCO FIGLIO DESTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
-    
+
     //metodo alternativo di mettere a NULL
     if (numEle == 0)
     {
@@ -228,8 +230,8 @@ struct kdtree_node *buildTree(MATRIX ds, struct kdtree_node *arrayTree, int inde
     int indexMedian = findMedian(ds, indexSorted, start, start + ((end - 1 - start) / 2), k, cut);
     // printf("\nvalore MEDIANO= %f\t indexMedian=%d\t", ds[indexSorted[indexMedian] * k + cut], indexMedian);
 
-    // arrayTree[index].median = ds[indexSorted[indexMedian] * k + cut]; //aggiungo il valore del mediano per la coordinata k (cut) nel nodo
-    // arrayTree[index].indexMedianPoint = indexSorted[indexMedian];     //memorizzo l'indice del dataset corrispondente al punto mediano inserito nel nodo
+    arrayTree[index].median = ds[indexSorted[indexMedian] * k + cut]; //aggiungo il valore del mediano per la coordinata k (cut) nel nodo
+    arrayTree[index].indexMedianPoint = indexSorted[indexMedian];     //memorizzo l'indice del dataset corrispondente al punto mediano inserito nel nodo
     // TODO: conviene usare l'indirizzo di memoria oppure l'indice della posizione nel dataset ??
 
     //stampa le coordinate del punto mediano
@@ -315,11 +317,13 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, struct kdtree_node *arrayTree, int 
 float *findRegion(MATRIX ds, int n, int k)
 {
     float *region = (float *)malloc(k * 2 * sizeof(float));
-
-    for (int j = 0; j < k; j++)
+    float h_min, h_max;
+    int j, i;
+    for (j = 0; j < k; j++)
     {
-        float h_min = ds[j], h_max = ds[j];
-        for (int i = 0; i < n; i++)
+        h_min = ds[j];
+        h_max = ds[j];
+        for (i = 0; i < n; i++)
         {
             if (h_max < ds[i * k + j])
                 h_max = ds[i * k + j];
@@ -348,7 +352,8 @@ void kdtree(params *input)
         printf("\nNO MEMORIA\n");
         exit(1);
     }
-    for (int i = 0; i < input->n; i++)
+    int i;
+    for (i = 0; i < input->n; i++)
     {
         indexSorted[i] = i;
     }
@@ -358,7 +363,7 @@ void kdtree(params *input)
 
     //bisogna liberare la memoria
     free(indexSorted);
-
+    // free(region);
 }
 
 int main(int argc, char const *argv[])
