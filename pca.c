@@ -8,6 +8,16 @@
 #define MATRIX float *
 #define KDTREE float * // modificare con il tipo di dato utilizzato
 
+// void pca(struct params *);
+void centraMatrice(MATRIX, int, int);
+float calcolaT(float *, int, int, int);
+void prodottoMatrice(float *, int, int, MATRIX, int, int, float *, int, int, int, int, int);
+void prodottoMatriceTrasp(float *, int, int, MATRIX, int, int, float *, int, int, int, int, int);
+float norma(float *, int, int, int);
+void dividi(float *, int, int, int, float);
+// void aggiornaDataset(MATRIX, int, int, float *, float *, int, int);
+void aggiornaDataset(MATRIX, int, int, float *, int, int, float *, int, int, int, int, int);
+
 typedef struct
 {
     char *filename;     //nome del file, estensione .ds per il data set, estensione .qs per l'eventuale query set
@@ -95,16 +105,19 @@ MATRIX load_data(char *filename, int *n, int *k)
 
 void centraMatrice(MATRIX ds, int n, int k)
 {
-
-    for (int j = 0; j < k; j++)
+    int i, j;
+    float acc, mean;
+    for (j = 0; j < k; j++)
     {
-        float acc = 0;
-        for (int i = 0; i < n; i++)
+        acc = 0;
+        for (i = 0; i < n; i++)
         {
             acc += ds[i * k + j];
         }
-        float mean = acc / n;
-        for (int i = 0; i < n; i++)
+        mean = acc / n;
+        // printf("\nmean = %f ", mean);
+        i = 0;
+        for (i = 0; i < n; i++)
         {
             ds[i * k + j] = ds[i * k + j] - mean;
         }
@@ -124,26 +137,54 @@ float calcolaT(float *a, int n, int k, int cut)
 
 //per dataset transposto rigaA=k, colA=n e rigaB=n;
 
-void prodottoMatrice(float *result, int col, int cut, MATRIX ds, int riga, int colB, float *vect)
+void prodottoMatriceTrasp(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int k, int n, int h)
 {
-    // float *result = malloc( colA* sizeof(float)); //dimensione n
-    int c, d, e;
+    int m, i, j;
     float sum = 0;
-    for (c = 0; c < riga; c++)
+    for (m = 0; m < rigaA; m++)
     {
-        for (d = 0; d < colB; d++)
+        for (i = 0; i < colB; i++)
         {
-            for (e = 0; e < colB; e++)
-            {
-
-                sum += ds[e * colB + c] * vect[d * col + cut];
-            }
-
-            result[d * col + cut] = sum;
             sum = 0;
+            for (j = 0; j < rigaB; j++)
+            {
+                sum += ds[j * k + m] * vect[j * h + cut];
+                // printf("\nds = %f , u = %f , sum = %f ", ds[j * k + m], vect[j * h + cut], sum);
+            }
+            result[m * h + cut] = sum;
+            // printf("V = %f \n", result[m * h + cut]);
         }
     }
-    return result;
+    /* Perform multiplication algorithm 
+        for( m = 0; m < m1->row; m++ ) {
+            for( i = 0; i < m2->column; i++ ) {
+                for( j = 0; j < m2->row; j++ ) {
+
+                    (result->matrix)[ m ][ i ] += ( m1->matrix )[ m ][ j ] * ( m2->matrix )[ j ][ i ];
+
+                }
+            }
+        }
+    */
+}
+void prodottoMatrice(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int k, int n, int h)
+{
+    int m, i, j;
+    float sum = 0;
+    for (m = 0; m < rigaA; m++)
+    {
+        for (i = 0; i < colB; i++)
+        {
+            sum = 0;
+            for (j = 0; j < rigaB; j++)
+            {
+                sum += ds[m * k + j] * vect[j * h + cut];
+                // printf("\nds = %f , u = %f , sum = %f ", ds[m * k + j], vect[j * h + cut], sum);
+            }
+            result[m * h + cut] = sum;
+            // printf("V = %f \n", result[m * h + cut]);
+        }
+    }
 }
 
 float norma(float *v, int numRig, int numCol, int cut)
@@ -163,22 +204,42 @@ void dividi(float *v, int numRig, int numCol, int cut, float norm)
     int i;
     for (i = 0; i < numRig; i++)
     {
-        v[i * numCol + i] = v[i * numCol + i] / norm;
+        v[i * numCol + cut] = v[i * numCol + cut] / norm;
     }
 }
 
-void aggiornaDataset(MATRIX ds, int numRig, int numCol, float *u, float *v, int h, int cut)
+void aggiornaDataset(MATRIX ds, int numRigDS, int numColDS, float *u, int rigaA, int colA, float *v, int rigaB, int colB, int h, int k, int cut)
 {
 
-    float res;
+    // (float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int k, int n, int h)
     int m, i, j;
-    for (m = 0; m < numRig; m++)
+    float sum = 0;
+    for (m = 0; m < rigaA; m++)
     {
-        for (i = 0; i < numCol; i++)
+        sum = 0;
+        for (i = 0; i < colB; i++)
         {
-            ds[m * numRig + i] -= u[m * h + cut] * v[i * h + cut];
+            // for (j = 0; j < rigaB; j++)
+            // {
+            sum += u[m * h + cut] * v[i * h + cut];
+            // printf("\nu = %f , v= %f , sum = %f ", u[m * h + cut], v[i * h + cut], sum);
+            // }
         }
+        // printf("  ds = %f \n", ds[m * k + i]);
+        ds[m * k + i] -= sum;
+        // printf("  ds = %f ", ds[m * k + i]);
     }
+
+    // float res;
+    // int m, i, j;
+    // for (m = 0; m < numRig; m++)
+    // {
+    //     for (i = 0; i < numCol; i++)
+    //     {
+    //         ds[m * numRig + i] -= u[m * h + cut] * v[i * h + cut];
+
+    //     }
+    // }
 }
 
 /*
@@ -187,37 +248,114 @@ void aggiornaDataset(MATRIX ds, int numRig, int numCol, float *u, float *v, int 
 */
 void pca(params *input)
 {
-
     centraMatrice(input->ds, input->n, input->k);
     float theta = 1 * exp(-8);
-    input->V = malloc(input->k * input->h); //dimensioni (k x h)
-    input->U = malloc(input->n * input->h); // dimensioni (n x h)
+    // printf("\ntetha= %f ", theta);
+    input->V = malloc(input->k * input->h * sizeof(float)); //dimensioni (k x h)
+    input->U = malloc(input->n * input->h * sizeof(float)); // dimensioni (n x h)
+    if (input->V == NULL || input->U == NULL)
+    {
+        printf("\nNo MEMORIA");
+        exit(1);
+    }
     int i;
     for (i = 0; i < input->n; i++)
     {
         input->U[i * input->h] = input->ds[i * input->k];
     }
-    int i, t, t1;
+    int t, t1;
+    i = 0;
     float norm, tempV;
+
+    // int n = 6;
+    // int k = 4;
+    // int size = n * k;
+    // // input->k = k;
+    // // input->n = n;
+    // float *dss = malloc(n * k * sizeof(float));
+    // for (int i = 0; i < size; i++)
+    //     dss[i] = rand() % 100;
+    // printf("\ndataset");
+    // for (int i = 0; i < size; i++)
+    //     printf("  %f ;", dss[i]);
+    // printf("\n");
+
+    // int h = 2;
+    // float *v = malloc(k * h * sizeof(float));
+    // for (int i = 0; i < k * h; i++)
+    //     v[i] = rand() % 100;
+    // printf("\nV");
+    // for (int i = 0; i < k * h; i++)
+    //     printf("  %f ;", v[i]);
+    // printf("\n");
+
+    // float *u = malloc(n * h * sizeof(float));
+    // for (int i = 0; i < n * h; i++)
+    //     u[i] = rand() % 100;
+    // printf("\nU");
+    // for (int i = 0; i < n * h; i++)
+    //     printf("  %f ;", u[i]);
+    // printf("\n");
+
+    // aggiornaDataset(dss, n, k, u, n, 1, v, 1, k, h, k, 0);
+
+    // centraMatrice(dss, n, k);
+
+    // printf("\ndataset centrata");
+    // for (int i = 0; i < size; i++)
+    //     printf("  %f ;", dss[i]);
+    // printf("\n");
+    // float t = calcolaT(u, n, h, 0);
+    // printf("\n t = %f", t);
+    // prodottoMatriceTrasp(v, k, 0, dss, k, n, u, n, 1, k, n, h);
+
+    // printf("\nV result prod \n");
+    // for (int i = 0; i < k * h; i++)
+    //     printf("  %f ;", v[i]);
+    // printf("\n");
+
+    // dividi(v, k, h, 0, t);
+
+    // printf("\nV result  div\n");
+    // for (int i = 0; i < k * h; i++)
+    //     printf("  %f ;", v[i]);
+    // printf("\n");
+
+    // float norm = norma(v, k, h, 0);
+
+    // printf("norma = %f ", norm);
+    // prodottoMatrice(u, n, 0, dss, n, k, v, k, 1, k, n, h);
+
+    // printf("\nU result \n");
+    // for (int i = 0; i < n * h; i++)
+    //     printf("  %f ;", u[i]);
+    // printf("\n");
+
+    int cont = 0;
     for (i = 0; i < input->h; i++)
     {
+        // printf(" inizio iterazione %d ", i);
         do
         {
-            prodottoMatrice(input->V, input->k, i, input->ds, input->k, input->n, input->U);
+
+            prodottoMatriceTrasp(input->V, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, input->k, input->n, input->h);
 
             t = calcolaT(input->U, input->n, input->h, i);
             dividi(input->V, input->k, input->h, i, t);
             norm = norma(input->V, input->k, input->h, i);
             dividi(input->V, input->k, input->h, i, norm);
 
-            prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, input->V);
+            prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, input->V, input->k, 1, input->k, input->n, input->h);
             tempV = calcolaT(input->V, input->k, input->h, i);
             dividi(input->U, input->n, input->h, i, tempV);
             t1 = calcolaT(input->U, input->n, input->h, i);
+            cont++;
+            // printf("\ncont %d", cont);
 
-        } while (t1 - t1 >= theta * t1);
+        } while (t1 - t >= theta * t1);
+        // printf("\n fine iterazione %d ", i);
 
-        aggiornaDataset(input->ds, input->n, input->k, input->U, input->V, input->h, i);
+        aggiornaDataset(input->ds, input->n, input->k, input->U, input->n, 1, input->V, 1, input->k, input->h, input->k, i);
     }
 }
 
@@ -401,6 +539,7 @@ int main(int argc, char **argv)
 
     if (input->h > 0)
     {
+        printf("\nINIZIO PCA\n");
         t = clock();
         pca(input);
         t = clock() - t;

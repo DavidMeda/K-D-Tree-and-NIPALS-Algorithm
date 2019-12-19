@@ -45,6 +45,7 @@ struct kdtree_node
     float medianCoordinate; //coordinata cut per il punto mediano
     float h_min, h_max;
     int indexMedianPoint;
+    int numPoint;
     struct kdtree_node *left, *right;
 };
 
@@ -184,6 +185,8 @@ int cont = 1;
 */
 struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, int end, int numEle, int k, int type)
 {
+    if (numEle == 0)
+        return NULL;
 
     int cut = liv % k; //variabile di cut per indice colonna da usare
     cont++;            //variabile per il debug
@@ -198,6 +201,7 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     struct kdtree_node *node = (struct kdtree_node *)malloc(sizeof(struct kdtree_node));
     node->h_min = ds[indexSorted[start] * k + (cut - 1)];   //valore di coordinata più piccola per il padre
     node->h_max = ds[indexSorted[end - 1] * k + (cut - 1)]; //valore di coordinata più piccola per il padre
+    node->numPoint = numEle;
     // printf("  puntoMin= %f  val puntMax= %f ", ds[indexSorted[start] * k + cut - 1], ds[indexSorted[end - 1] * k + cut - 1]);
 
     //serve per il debug
@@ -283,6 +287,7 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
     root->indexMedianPoint = indexSorted[indexMedian];               //indice del punto mediano nel dataset
     root->h_min = ds[indexSorted[0] * k + cut];                      //valore di coordinata più piccola
     root->h_max = ds[indexSorted[end - 1] * k + cut];                //valore di coordinata più grande
+    root->numPoint = end;
 
     int numEleSx = indexMedian;
     int numEleDx = end - indexMedian - 1;
@@ -352,11 +357,14 @@ void kdtree(params *input)
     {
         indexSorted[i] = i;
     }
+    // si può usare memset
+    // memset(indexSorted,0,input->n*sizeof(int));
+
     float *region = findRegion(input->ds, input->n, input->k);
     input->kdtree = buildTreeRoot(input->ds, indexSorted, 0, input->n, input->k);
 
     printf("\n");
-    // printTree(input->kdtree);
+    printTree(input->kdtree);
 
     //bisogna liberare la memoria
     free(indexSorted);

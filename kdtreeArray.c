@@ -357,6 +357,8 @@ void kdtree(params *input)
     {
         indexSorted[i] = i;
     }
+    // memset(indexSorted, 0, input->n * sizeof(int));
+
     float *region = findRegion(input->ds, input->n, input->k);
 
     buildTreeRoot(input->ds, input->kdtree, 0, indexSorted, 0, input->n, input->k, region, 0);
