@@ -288,8 +288,8 @@ void order(float *ds, int liv, int k, int head, int tail)
 *	Range Query Search
 * 	======================
 */
-void range_query(params *input)
-{
+// void range_query(params *input)
+// {
     //input->qs;queryset che usa k e usa input->nq;
     //input->r;
     // for(int i=0;i<input->nq;i++){
@@ -304,7 +304,7 @@ void range_query(params *input)
     // (id_query, id_vicino)
     // o in altro formato
     // -------------------------------------------------
-}
+// }
 /*
 void rangequery(kdtree_node* node,kdtree_node* nodec,float* r_query,int headq,int tailq,int r){
 //kdtree_node* nodec gli passo il punto

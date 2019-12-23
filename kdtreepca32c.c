@@ -217,8 +217,8 @@ void kdtree(params *input)
 *	Range Query Search
 * 	======================
 */
-void range_query(params *input)
-{
+// void range_query(params *input)
+// {
 
     // -------------------------------------------------
     // Codificare qui l'algoritmo di ricerca
@@ -228,7 +228,7 @@ void range_query(params *input)
     // (id_query, id_vicino)
     // o in altro formato
     // -------------------------------------------------
-}
+// }
 
 int main(int argc, char **argv)
 {

@@ -34,6 +34,7 @@ typedef struct
     int display;        //1 per stampare i risultati, 0 altrimenti
     MATRIX U;           //matrice U restituita dall'algoritmo PCA
     MATRIX V;           //matrice V restituita dall'algoritmo PCA
+    MATRIX region;      //regione indicizzata da root formata da k coppie (h_min, h_max)
 
     //STRUTTURE OUTPUT MODIFICABILI
     int *QA; //risposte alle query in forma di coppie di interi (id_query, id_vicino)
@@ -360,16 +361,19 @@ void kdtree(params *input)
     // si può usare memset
     // memset(indexSorted,0,input->n*sizeof(int));
 
-    float *region = findRegion(input->ds, input->n, input->k);
+    input->region = findRegion(input->ds, input->n, input->k);
     input->kdtree = buildTreeRoot(input->ds, indexSorted, 0, input->n, input->k);
 
-    printf("\n");
-    printTree(input->kdtree);
+    // printTree(input->kdtree);
 
     //bisogna liberare la memoria
     free(indexSorted);
+    printf("\nfine KDTREE");
+
     // free(region);
 }
+
+extern void range_query(params *input);
 
 int main(int argc, char const *argv[])
 {
@@ -387,7 +391,7 @@ int main(int argc, char const *argv[])
     input->filename = NULL;
     input->h = 0;
     input->kdtree = NULL;
-    input->r = -1;
+    input->r = 100;
     input->silent = 0;
     input->display = 1;
     input->QA = NULL;
@@ -543,8 +547,13 @@ int main(int argc, char const *argv[])
     kdtree(input);
     t = clock() - t;
     time = ((float)t) / CLOCKS_PER_SEC;
-
     printf("\n\ntime= %f seconds\n", time);
+
+    t = clock();
+    range_query(input);
+    time = ((float)t) / CLOCKS_PER_SEC;
+    printf("\n\ntime= %f seconds\n", time);
+
     // if (input->kdtree)
     // {
     //     t = clock();
