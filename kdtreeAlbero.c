@@ -551,6 +551,7 @@ int main(int argc, char const *argv[])
 
     t = clock();
     range_query(input);
+    t = clock() - t;
     time = ((float)t) / CLOCKS_PER_SEC;
     printf("\n\ntime= %f seconds\n", time);
 
@@ -563,6 +564,7 @@ int main(int argc, char const *argv[])
     // }
     // else
     //     time = -1;
+
 
     return 0;
 }
