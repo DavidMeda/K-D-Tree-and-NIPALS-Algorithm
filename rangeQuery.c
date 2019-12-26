@@ -165,22 +165,10 @@ int *rangeQueryChild(MATRIX ds, KDTREE node, int n, int k, MATRIX q, int indexQ,
     // if (euclideanDistanceDataset(ds, node->indexMedianPoint, q, indexQ, k) <= r)
     if (dist <= r)
     {
+        printf("\nPUNTO VICINO index ds= %d  index qs= %d   distanza euclidea = %f ", node->indexMedianPoint, indexQ, dist);
+        list[count] = node->indexMedianPoint;
+        printf(" list[%d] = %d", count, list[count]);
         count++;
-        printf("\nPUNTO VICINO index ds= %d  index qs= %d", node->indexMedianPoint, indexQ);
-        printf("  distanza euclidea = %f ", dist);
-        if (list == NULL)
-        {
-            list = malloc(node->numPoint * sizeof(int));
-            list[indexList] = node->numPoint;
-            indexList++;
-            list[indexList] = node->indexMedianPoint;
-            indexList++;
-        }
-        else
-        {
-            list[indexList] = node->indexMedianPoint;
-            indexList++;
-        }
 
         //aggiungi punto
     }
@@ -222,17 +210,10 @@ int *rangeQueryRoot(MATRIX ds, KDTREE root, int n, int k, MATRIX q, int indexQ, 
     // if (euclideanDistanceDataset(ds, root->indexMedianPoint, q, indexQ, k) <= r)
     if (dist <= r)
     {
-        count++;
-        printf("\nPUNTO VICINO index ds= %d  index qs= %d", root->indexMedianPoint, indexQ);
+        printf("\nPUNTO VICINO  root index ds= %d  index qs= %d", root->indexMedianPoint, indexQ);
         printf("  distanza euclidea = %f ", dist);
-        if (list == NULL)
-        {
-            list = malloc(root->numPoint * sizeof(int));
-            list[indexList] = root->numPoint;
-            indexList++;
-            list[indexList] = root->indexMedianPoint;
-            indexList++;
-        }
+        list[indexList] = root->indexMedianPoint;
+        count++;
         //aggiungi punto
     }
     // else
@@ -279,31 +260,31 @@ void range_query(params *input)
         exit(1);
     }
     int *result[input->nq];
-    int i = 0;
+    int i = 1999;
     printf("\npunto query");
-    for (i = 0; i < input->nq; i++)
-    {
-        // printf("\npoint qs: ");
-        // for (int j = 0; j < 10; j++)
-        // {
-        //     printf(" [ %d ]= %f ", j, input->qs[i * input->k + j]);
-        // }
-        // printf("\n");
-        // for (int j = 0; j < input->k; j++)
-        // {
-        //     printf(" %d = (min= %f, max= %f)  ", j, input->region[2 * j], input->region[(2 * j) + 1]);
-        // }
-        printf("\nN° %d  ", i);
-        int *list = NULL;
-        rangeQueryRoot(input->ds, input->kdtree, input->n, input->k, input->qs, i, input->r, 0, input->region, point, list, 0);
-        result[i] = &list;
-        printf("\nFINE QUERY N° %d", i);
-    }
+    // for (i = 0; i < input->nq; i++)
+    // {
+    // printf("\npoint qs: ");
+    // for (int j = 0; j < 10; j++)
+    // {
+    //     printf(" [ %d ]= %f ", j, input->qs[i * input->k + j]);
+    // }
+    // printf("\n");
+    // for (int j = 0; j < input->k; j++)
+    // {
+    //     printf(" %d = (min= %f, max= %f)  ", j, input->region[2 * j], input->region[(2 * j) + 1]);
+    // }
+    printf("\nN° %d  ", i);
+    input->QA = malloc(input->nq * sizeof(int));
+    rangeQueryRoot(input->ds, input->kdtree, input->n, input->k, input->qs, i, input->r, 0, input->region, point, input->QA, 0);
+    printf("\nFINE QUERY N° %d", i);
+    // }
+    input->nQA = count;
     printf("\ncount = %d ", count);
-    for (int i = 0; i < 1; i++)
+    for (int i = 0; i < input->nQA ; i++)
     {
-        int *size = result[0];
-        printf("size[0]= %d ", *size[0]);
+        // int *size = result[0];
+        printf(" res[%d]= %d ", i, input->QA[i]);
     }
 }
 
