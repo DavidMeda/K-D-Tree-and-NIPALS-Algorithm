@@ -40,7 +40,7 @@ struct kdtree_node
     int numPoint;
     struct kdtree_node *left, *right;
 };
-/*
+
 void *get_block(int size, int elements)
 {
     return _mm_malloc(elements * size, 16);
@@ -88,8 +88,7 @@ MATRIX load_data(char *filename, int *n, int *k)
 
     return data;
 }
-*/
-int count = 0;
+
 
 float euclideanDistance(float *point, MATRIX q, int indexQ, int k)
 {
@@ -102,6 +101,7 @@ float euclideanDistance(float *point, MATRIX q, int indexQ, int k)
     }
     return sqrtf(sum);
 }
+
 float euclideanDistanceDataset(MATRIX ds, int indexMedian, MATRIX q, int indexQ, int k)
 {
 
@@ -113,6 +113,7 @@ float euclideanDistanceDataset(MATRIX ds, int indexMedian, MATRIX q, int indexQ,
     }
     return sqrtf(sum);
 }
+
 //distanza tra il punto q del querySet e l'intera regione indicizzata
 float distanceRoot(float *region, MATRIX q, int indexQ, int k, float *point)
 {
@@ -142,7 +143,12 @@ float distanceChild(KDTREE node, MATRIX q, int indexQ, int k, float *point, int 
     return euclideanDistance(point, q, indexQ, k);
 }
 
-int *rangeQueryChild(MATRIX ds, KDTREE node, int n, int k, MATRIX q, int indexQ, int r, int liv, float *point, int *list, int indexList)
+int indexList = 0; //varibile statica per accedere alla lista dei punti vicini
+
+/*  Questo metodo effettua la rangeQuery sui sottoalberi figli di root, la distanza della region viene effettuata solo per le coordinate di cut del nodo padre
+*   poichè le restanti coordinate non cambiano e alla fine si eseguono le chiamate ricorsive sui figli finchè non si arriva a un nodo foglia
+*/
+int *rangeQueryChild(MATRIX ds, KDTREE node, int n, int k, MATRIX q, int indexQ, int r, int liv, float *point, int *list, int sizeList)
 {
     if (liv == 20)
     {
@@ -150,14 +156,13 @@ int *rangeQueryChild(MATRIX ds, KDTREE node, int n, int k, MATRIX q, int indexQ,
         exit(1);
     }
     // printf("    liv = %d ", liv);
-    int cut = liv % k;
-    float dist = distanceChild(node, q, indexQ, k, point, cut - 1);
+    int cut = (liv - 1) % k;                                    //il cut del nodo padre
+    float dist = distanceChild(node, q, indexQ, k, point, cut); //variabile per il debug
     // if (distanceChild(node, q, indexQ, k, point, cut - 1) > r)
     if (dist > r)
     {
         printf("\nFUORI DALLA REGIONE index ds= %d  index qs= %d  dist=  %f ", node->indexMedianPoint, indexQ, dist);
-
-        return list; //dobbiamo ritornare l'indice del punto di query senza punti vicini (-1) ?
+        return list;
     }
     // printf("\ndistanza point e region=  %f DENTRO REGIONE", dist);
     dist = euclideanDistanceDataset(ds, node->indexMedianPoint, q, indexQ, k);
@@ -165,84 +170,79 @@ int *rangeQueryChild(MATRIX ds, KDTREE node, int n, int k, MATRIX q, int indexQ,
     // if (euclideanDistanceDataset(ds, node->indexMedianPoint, q, indexQ, k) <= r)
     if (dist <= r)
     {
-        printf("\nPUNTO VICINO index ds= %d  index qs= %d   distanza euclidea = %f ", node->indexMedianPoint, indexQ, dist);
-        list[count] = node->indexMedianPoint;
-        printf(" list[%d] = %d", count, list[count]);
-        count++;
-
         //aggiungi punto
+        printf("\nPUNTO VICINO index ds= %d  index qs= %d   distanza euclidea = %f ", node->indexMedianPoint, indexQ, dist);
+        if (indexList == sizeList - 1)
+        {
+            list = realloc(list, 2 * sizeList * sizeof(int));
+            sizeList = 2 * sizeList;
+        }
+        list[indexList] = node->indexMedianPoint;
+        printf(" list[%d] = %d", indexList, list[indexList]);
+        indexList++;
     }
-    // else
-    // {
-    //     printf("\nNO VICINO");
-    // }
 
     // if (q[indexQ * k + cut] < node->medianCoordinate && node->left != NULL)
     if (node->left != NULL)
     {
         // printf("\n\nRICERCA ALBERO SINISTRO  qs= %f median= %f", q[indexQ * k + cut], node->medianCoordinate);
-
-        rangeQueryChild(ds, node->left, n, k, q, indexQ, r, liv + 1, point, list, indexList);
+        rangeQueryChild(ds, node->left, n, k, q, indexQ, r, liv + 1, point, list, sizeList);
     }
     // else if (q[indexQ * k + cut] >= node->medianCoordinate && node->right != NULL)
     if (node->right != NULL)
     {
         // printf("\n\nRICERCA ALBERO DESTRO  qs= %f median= %f", q[indexQ * k + cut], node->medianCoordinate);
-
-        rangeQueryChild(ds, node->right, n, k, q, indexQ, r, liv + 1, point, list, indexList);
+        rangeQueryChild(ds, node->right, n, k, q, indexQ, r, liv + 1, point, list, sizeList);
     }
     return list;
 }
 
-int *rangeQueryRoot(MATRIX ds, KDTREE root, int n, int k, MATRIX q, int indexQ, int r, int liv, float *region, float *point, int *list, int indexList)
+/*  Questo metodo server per effettuare il controllo tra il punto di query e la regione indicizzata dall'intero dataset
+*   viene usato region che contiene il vettore delle k coppia di (h_min, h_max)
+*   alla fine il metodo richiama la ricerca sui suoi figli
+*/
+int *rangeQueryRoot(MATRIX ds, KDTREE root, int n, int k, MATRIX q, int indexQ, int r, int liv, float *region, float *point, int *list, int sizeList)
 {
     printf("   query root");
-    float dist = distanceRoot(region, q, indexQ, k, point);
+    float dist = distanceRoot(region, q, indexQ, k, point); //variabile per il debug
     // if (distanceRoot(region, q, indexQ, k, point) > r)
     if (dist > r)
     {
         printf("\nFUORI DALLA REGIONE index ds= %d  index qs= %d  dist=  %f ", root->indexMedianPoint, indexQ, dist);
-        return list; //dobbiamo ritornare l'indice del punto di query senza punti vicini (-1) ?
+        return list;
     }
     // else
     //     printf("\ndistanza point e region=  %f DENTRO REGIONE", dist);
-    dist = euclideanDistanceDataset(ds, root->indexMedianPoint, q, indexQ, k);
+    dist = euclideanDistanceDataset(ds, root->indexMedianPoint, q, indexQ, k); //variabile per il debug
     // if (euclideanDistanceDataset(ds, root->indexMedianPoint, q, indexQ, k) <= r)
     if (dist <= r)
     {
+        //aggiungi punto
         printf("\nPUNTO VICINO  root index ds= %d  index qs= %d", root->indexMedianPoint, indexQ);
         printf("  distanza euclidea = %f ", dist);
+        if (indexList == sizeList - 1)
+        {
+            list = realloc(list, 2 * sizeList * sizeof(int));
+            sizeList = 2 * sizeList;
+        }
         list[indexList] = root->indexMedianPoint;
-        count++;
-        //aggiungi punto
+        indexList++;
     }
-    // else
-    // {
-    //     printf("\nNO VICINO");
-    // }
-
-    int cut = liv % k;
 
     // if (q[indexQ * k + cut] < root->medianCoordinate)
     if (root->left != NULL)
     {
         // printf("\n\nRICERCA ALBERO SINISTRO  qs= %f median= %f", q[indexQ * k + cut], root->medianCoordinate);
-        rangeQueryChild(ds, root->left, n, k, q, indexQ, r, liv + 1, point, list, indexList);
+        rangeQueryChild(ds, root->left, n, k, q, indexQ, r, liv + 1, point, list, sizeList);
     }
     // else if (q[indexQ * k + cut] >= root->medianCoordinate)
     if (root->right != NULL)
     {
         // printf("\n\nRICERCA ALBERO DESTRO  qs= %f median= %f", q[indexQ * k + cut], root->medianCoordinate);
-
-        rangeQueryChild(ds, root->right, n, k, q, indexQ, r, liv + 1, point, list, indexList);
+        rangeQueryChild(ds, root->right, n, k, q, indexQ, r, liv + 1, point, list, sizeList);
     }
     return list;
-    //return lista punti vicini
 }
-
-// -------------------------------------------------
-// Codificare qui l'algoritmo di ricerca
-// -------------------------------------------------
 
 // Calcola il risultato come una matrice di nQA coppie di interi
 // (id_query, id_vicino)
@@ -252,40 +252,33 @@ void range_query(params *input)
 {
     printf("\n inizio QUERY");
 
-    // float *region = malloc(2 * input->k * sizeof(float));
-    float *point = malloc(input->k * sizeof(float));
+    float *point = malloc(input->k * sizeof(float)); //punto che conterrà il punto più vicino alla region per il confronto
     if (point == NULL)
     {
         printf("\nNO MEMORIA");
         exit(1);
     }
-    int *result[input->nq];
-    int i = 1999;
-    printf("\npunto query");
-    // for (i = 0; i < input->nq; i++)
-    // {
-    // printf("\npoint qs: ");
-    // for (int j = 0; j < 10; j++)
-    // {
-    //     printf(" [ %d ]= %f ", j, input->qs[i * input->k + j]);
-    // }
-    // printf("\n");
-    // for (int j = 0; j < input->k; j++)
-    // {
-    //     printf(" %d = (min= %f, max= %f)  ", j, input->region[2 * j], input->region[(2 * j) + 1]);
-    // }
-    printf("\nN° %d  ", i);
     input->QA = malloc(input->nq * sizeof(int));
-    rangeQueryRoot(input->ds, input->kdtree, input->n, input->k, input->qs, i, input->r, 0, input->region, point, input->QA, 0);
-    printf("\nFINE QUERY N° %d", i);
-    // }
-    input->nQA = count;
-    printf("\ncount = %d ", count);
-    for (int i = 0; i < input->nQA ; i++)
+    int i;
+    // printf("\npunto query");
+    for (i = 0; i < input->nq; i++)
     {
-        // int *size = result[0];
-        printf(" res[%d]= %d ", i, input->QA[i]);
+        // printf("\npoint qs: ");
+        // for (int j = 0; j < 10; j++)
+        // {
+        //     printf(" [ %d ]= %f ", j, input->qs[i * input->k + j]);
+        // }
+        printf("\nN° %d  ", i);
+        rangeQueryRoot(input->ds, input->kdtree, input->n, input->k, input->qs, i, input->r, 0, input->region, point, input->QA, input->nq);
+        printf("\nFINE QUERY N° %d", i);
     }
+    input->nQA = indexList + 1;
+    // printf("\ncount = %d ", count);
+    // for (int i = 0; i < input->nQA; i++)
+    // {
+    //     // int *size = result[0];
+    //     printf(" res[%d]= %d ", i, input->QA[i]);
+    // }
 }
 
 /*
