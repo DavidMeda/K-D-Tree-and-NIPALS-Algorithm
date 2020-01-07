@@ -17,6 +17,12 @@ int findMedian(MATRIX, int *, int, int, int, int);
 struct kdtree_node *buildTreeRoot(MATRIX, int *, int, int, int);
 struct kdtree_node *buildTree(MATRIX, int *, int, int, int, int, int, int);
 float *findRegion(MATRIX, int, int);
+float euclideanDistance(float *, MATRIX, int, int);
+float euclideanDistanceDataset(MATRIX, int, MATRIX, int, int);
+float distanceRoot(float *, MATRIX, int, int, float *);
+float distanceChild(KDTREE, MATRIX, int, int, float *, int);
+int *rangeQueryChild(MATRIX, KDTREE, int, int, MATRIX, int, int, int, float *, int *);
+int *rangeQueryRoot(MATRIX, KDTREE, int, int, MATRIX, int, int, int, float *, float *, int *);
 
 typedef struct
 {
@@ -38,7 +44,7 @@ typedef struct
 
     //STRUTTURE OUTPUT MODIFICABILI
     int *QA; //risposte alle query in forma di coppie di interi (id_query, id_vicino)
-    int nQA; //numero di risposte alle query
+    // int nQA; //numero di risposte alle query
 } params;
 
 struct kdtree_node
@@ -46,7 +52,8 @@ struct kdtree_node
     float medianCoordinate; //coordinata cut per il punto mediano
     float h_min, h_max;
     int indexMedianPoint;
-    int numPoint;
+    int numPoint; //forse non serve
+
     struct kdtree_node *left, *right;
 };
 
@@ -98,32 +105,52 @@ MATRIX load_data(char *filename, int *n, int *k)
     return data;
 }
 
-void MyprintArray(MATRIX ds, int *a, int start, int size, int k, int cut)
+/*
+* 
+* 	save_data
+* 	=========
+* 
+*	Salva su file un array lineare in row-major order
+*	come matrice di N righe e M colonne
+* 
+* 	Codifica del file:
+* 	primi 4 byte: numero di righe (N) --> numero intero a 32 bit
+* 	successivi 4 byte: numero di colonne (M) --> numero intero a 32 bit
+* 	successivi N*M*4 byte: matrix data in row-major order --> numeri interi o floating-point a precisione singola
+* 
+*/
+void save_data(char *filename, void *X, int n, int k)
 {
-    printf("\nInizio a stampare \n");
-    for (int i = start; i < size; i++)
+    FILE *fp;
+    int i;
+    fp = fopen(filename, "wb");
+    if (X != NULL)
     {
-        printf("i:%d - %f, ", a[i], ds[a[i] * k + cut]);
-        if (i % 10 == 0 && i > 0)
-            printf("\n");
-        if (i == 100)
-            break;
+        fwrite(&n, 4, 1, fp);
+        fwrite(&k, 4, 1, fp);
+        for (i = 0; i < n; i++)
+        {
+            fwrite(X, 4, k, fp);
+            //printf("%i %i\n", ((int*)X)[0], ((int*)X)[1]);
+            X += 4 * k;
+        }
     }
-    printf("\n");
+    fclose(fp);
 }
 
-void printArray(int *a, int size)
+/*
+*	PCA
+* 	=====================
+*/
+void pca(params *input)
 {
-    printf("\nInizio a stampare \n");
-    for (int i = 0; i < size; i++)
-    {
-        printf("i: %d - %d, ", i, a[i]);
-        if (i % 10 == 0 && i > 0)
-            printf("\n");
-        if (i == 100)
-            break;
-    }
-    printf("\n");
+
+    // -------------------------------------------------
+    // Codificare qui l'algoritmo PCA
+    // -------------------------------------------------
+    // prova(input);
+    // Calcola le matrici U e V
+    // -------------------------------------------------
 }
 
 void swap(int *a, int *b)
@@ -177,8 +204,59 @@ int findMedian(MATRIX dataset, int *indexSorted, int start, int indexMedian, int
     }
     return indexMedian;
 }
-//contatore per il debug
-int cont = 1;
+
+float euclideanDistance(float *point, MATRIX q, int indexQ, int k)
+{
+
+    float sum = 0;
+    int i;
+    for (i = 0; i < k; i++)
+    {
+        sum += powf(point[i] - q[indexQ * k + i], 2);
+    }
+    return sqrtf(sum);
+}
+
+float euclideanDistanceDataset(MATRIX ds, int indexMedian, MATRIX q, int indexQ, int k)
+{
+
+    float sum = 0;
+    int i;
+    for (i = 0; i < k; i++)
+    {
+        sum += powf(ds[indexMedian * k + i] - q[indexQ * k + i], 2);
+    }
+    return sqrtf(sum);
+}
+
+//distanza tra il punto q del querySet e l'intera regione indicizzata
+float distanceRoot(float *region, MATRIX q, int indexQ, int k, float *point)
+{
+    int j;
+    for (j = 0; j < k; j++)
+    {
+        if (q[indexQ * k + j] <= region[2 * j])
+            point[j] = region[2 * j];
+        else if (q[indexQ * k + j] >= region[(2 * j) + 1])
+            point[j] = region[(2 * j) + 1];
+        else
+            point[j] = q[indexQ * k + j];
+    }
+
+    return euclideanDistance(point, q, indexQ, k);
+}
+
+float distanceChild(KDTREE node, MATRIX q, int indexQ, int k, float *point, int cut)
+{
+    if (q[indexQ * k + cut] <= node->h_min)
+        point[cut] = q[indexQ * k + cut];
+    else if (q[indexQ * k + cut] >= node->h_max)
+        point[cut] = q[indexQ * k + cut];
+    else
+        point[cut] = q[indexQ * k + cut];
+
+    return euclideanDistance(point, q, indexQ, k);
+}
 
 /*
 *   buildTree serve per costruire tutti i nodi del kdtree
@@ -190,48 +268,22 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
         return NULL;
 
     int cut = liv % k; //variabile di cut per indice colonna da usare
-    cont++;            //variabile per il debug
-    // type = 0 nodo sinistro, type = 1 node destro (serve per il debug)
-
-    // if (type == 0)
-    //     printf("\n\nCOSTRIUSCO FIGLIO SINISTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
-    // else
-    //     printf("\n\nCOSTRIUSCO FIGLIO DESTRO liv= %d, start= %d end= %d, cut= %d, numEle= %d, cont= %d", liv, start, end, cut, numEle, cont);
-
-    //SUGGERIMENTO: potrebbe bastare memorizzare solo una coordinata invece di tutto il punto con le k coordinate??? RISPOSTA SI.
-    struct kdtree_node *node = (struct kdtree_node *)malloc(sizeof(struct kdtree_node));
+    struct kdtree_node *node = (struct kdtree_node *)get_block(sizeof(struct kdtree_node), 1);
     node->h_min = ds[indexSorted[start] * k + (cut - 1)];   //valore di coordinata più piccola per il padre
     node->h_max = ds[indexSorted[end - 1] * k + (cut - 1)]; //valore di coordinata più piccola per il padre
     node->numPoint = numEle;
-    // printf("  puntoMin= %f  val puntMax= %f ", ds[indexSorted[start] * k + cut - 1], ds[indexSorted[end - 1] * k + cut - 1]);
-
-    //serve per il debug
-    // if (cut == 5)
-    // {
-    //     printf("\nFINE\n");
-    //     return NULL;
-    // }
     quicksort(ds, indexSorted, cut, k, start, end);
 
     int indexMedian = findMedian(ds, indexSorted, start, start + ((end - 1 - start) / 2), k, cut);
 
-    // printf("\nvalore MEDIANO= %f\t indexMedian=%d\t val puntoMin= %f\t val puntMax= %f ", ds[indexSorted[indexMedian] * k + cut], indexSorted[indexMedian], ds[indexSorted[start] * k + cut], ds[indexSorted[end - 1] * k + cut]);
-
     node->medianCoordinate = ds[indexSorted[indexMedian] * k + cut]; //valore di coordinata del punto mediano
     node->indexMedianPoint = indexSorted[indexMedian];               //indice del punto mediano nel dataset
 
-    // printf("\nPunto del nodo:  ");
-    // for (int i = 0; i < 4; i++)
-    // {
-    //     printf("%f, ", ds[indexSorted[indexMedian] * k + i]);
-    // }
     int numEleSx = indexMedian - start;
     int numEleDx = end - indexMedian - 1;
-    // printf("\nsizeSX= %d  sizeDX= %d", numEleSx, numEleDx);
 
     if (numEleSx == 0 && numEleDx == 0)
     {
-        // printf("\nNODO FOGLIA");
         node->left = NULL;
         node->right = NULL;
         return node;
@@ -268,21 +320,12 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
         return NULL;
     }
     int cut = liv % k; //variabile di cut per indice colonna da usare
-    // printf("\nCOSTRIUSCO RADICE\t livello= %d, size= %d, k= %d, cut= %d", liv, end, k, cut);
 
     quicksort(ds, indexSorted, cut, k, 0, end);
 
-    // MyprintArray(ds, indexSorted, 0, size, k, cut);
     int indexMedian = findMedian(ds, indexSorted, 0, (end - 1) / 2, k, cut);
 
-    // printf("\nvalore MEDIANO= %f\t indexMedian=%d\t val puntoMin= %f\t val puntMax= %f ", ds[indexSorted[indexMedian] * k + cut], indexSorted[indexMedian], ds[indexSorted[0] * k + cut], ds[indexSorted[end - 1] * k + cut]);
-    struct kdtree_node *root = (struct kdtree_node *)malloc(sizeof(struct kdtree_node));
-
-    // printf("\nPunto del nodo:  ");
-    // for (int i = 0; i < 4; i++)
-    // {
-    //     printf("%f, ", ds[indexSorted[indexMedian] * k + i]);
-    // }
+    struct kdtree_node *root = (struct kdtree_node *)get_block(sizeof(struct kdtree_node), 1);
 
     root->medianCoordinate = ds[indexSorted[indexMedian] * k + cut]; //valore di coordinata del punto mediano
     root->indexMedianPoint = indexSorted[indexMedian];               //indice del punto mediano nel dataset
@@ -293,7 +336,6 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
     int numEleSx = indexMedian;
     int numEleDx = end - indexMedian - 1;
 
-    // printf("\nsizeSX= %d  sizeDX= %d", numEleSx, numEleDx);
     root->left = buildTree(ds, indexSorted, liv + 1, 0, indexMedian, numEleSx, k, 0);
     root->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1);
 
@@ -302,7 +344,7 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
 
 float *findRegion(MATRIX ds, int n, int k)
 {
-    float *region = (float *)malloc(k * 2 * sizeof(float));
+    float *region = (float *)get_block(sizeof(float), k * 2);
     float h_min, h_max;
     int j, i;
     for (j = 0; j < k; j++)
@@ -321,20 +363,66 @@ float *findRegion(MATRIX ds, int n, int k)
     }
     return region;
 }
-int conta = 0;
-void printTree(KDTREE alb)
-{
-    conta++;
-    printf("  Val alb= %f index= %d cont= %d", alb->medianCoordinate, alb->indexMedianPoint, conta);
-    if (alb->left != NULL)
-        printf(" SX ");
-    if (alb->right != NULL)
-        printf(" DX ");
 
-    if (alb->left != NULL)
-        printTree(alb->left);
-    if (alb->right != NULL)
-        printTree(alb->right);
+int indexList = 0;
+
+/*  Questo metodo effettua la rangeQuery sui sottoalberi figli di root, la distanza della region viene effettuata solo per le coordinate di cut del nodo padre
+*   poichè le restanti coordinate non cambiano e alla fine si eseguono le chiamate ricorsive sui figli finchè non si arriva a un nodo foglia
+*/
+int *rangeQueryChild(MATRIX ds, KDTREE node, int n, int k, MATRIX q, int indexQ, int r, int liv, float *point, int *list)
+{
+    int cut = (liv - 1) % k; //il cut del nodo padre
+
+    if (distanceChild(node, q, indexQ, k, point, cut) > r)
+    {
+        return list;
+    }
+
+    if (euclideanDistanceDataset(ds, node->indexMedianPoint, q, indexQ, k) <= r)
+    {
+        list[indexQ * n + indexList] = node->indexMedianPoint;
+
+        indexList++;
+    }
+
+    if (node->left != NULL)
+    {
+        rangeQueryChild(ds, node->left, n, k, q, indexQ, r, liv + 1, point, list);
+    }
+    if (node->right != NULL)
+    {
+        rangeQueryChild(ds, node->right, n, k, q, indexQ, r, liv + 1, point, list);
+    }
+    return list;
+}
+
+/*  Questo metodo server per effettuare il controllo tra il punto di query e la regione indicizzata dall'intero dataset
+*   viene usato region che contiene il vettore delle k coppia di (h_min, h_max)
+*   alla fine il metodo richiama la ricerca sui suoi figli
+*/
+int *rangeQueryRoot(MATRIX ds, KDTREE root, int n, int k, MATRIX q, int indexQ, int r, int liv, float *region, float *point, int *list)
+{
+
+    if (distanceRoot(region, q, indexQ, k, point) > r)
+    {
+        return NULL;
+    }
+
+    if (euclideanDistanceDataset(ds, root->indexMedianPoint, q, indexQ, k) <= r)
+    {
+        list[indexQ * n + indexList] = root->indexMedianPoint;
+        indexList++;
+    }
+
+    if (root->left != NULL)
+    {
+        rangeQueryChild(ds, root->left, n, k, q, indexQ, r, liv + 1, point, list);
+    }
+    if (root->right != NULL)
+    {
+        rangeQueryChild(ds, root->right, n, k, q, indexQ, r, liv + 1, point, list);
+    }
+    return list;
 }
 
 /*
@@ -346,12 +434,12 @@ void kdtree(params *input)
 
     printf("\nInizio kdtree");
     // printf("\ndataset size%d, dataset k%d\n", input->n, input->k);
-    int *indexSorted = (int *)malloc(input->n * sizeof(int)); //vettore che conterra indice riga dei punti ordinati
+    int *indexSorted = (int *)get_block(sizeof(int), input->n); //vettore che conterra indice riga dei punti ordinati
 
     if (indexSorted == NULL)
     {
         printf("\nNO MEMORIA\n");
-        exit(1);
+        exit(-2);
     }
     int i;
     for (i = 0; i < input->n; i++)
@@ -364,16 +452,36 @@ void kdtree(params *input)
     input->region = findRegion(input->ds, input->n, input->k);
     input->kdtree = buildTreeRoot(input->ds, indexSorted, 0, input->n, input->k);
 
-    // printTree(input->kdtree);
+    // // printTree(input->kdtree);
 
     //bisogna liberare la memoria
-    free(indexSorted);
+
+    free_block(indexSorted);
     printf("\nfine KDTREE");
 
     // free(region);
 }
 
-extern void range_query(params *input);
+void range_query(params *input)
+{
+    printf("\n inizio QUERY");
+
+    float *point = (float *)get_block(sizeof(float), input->k); //punto che conterrà il punto più vicino alla region per il confronto
+    input->QA = (int *)get_block(sizeof(int), input->n * input->nq);
+    if (point == NULL || input->QA == NULL)
+    {
+        printf("\nNO MEMORIA");
+        exit(-2);
+    }
+    int i;
+    for (i = 0; i < input->nq; i++)
+    {
+        rangeQueryRoot(input->ds, input->kdtree, input->n, input->k, input->qs, i, input->r, 0, input->region, point, input->QA);
+        input->QA[i * input->n + indexList] = -1;
+        indexList = 0;
+    }
+    free_block(point);
+}
 
 int main(int argc, char const *argv[])
 {
@@ -391,11 +499,11 @@ int main(int argc, char const *argv[])
     input->filename = NULL;
     input->h = 0;
     input->kdtree = NULL;
-    input->r = 100;
+    input->r = 0;
     input->silent = 0;
     input->display = 1;
     input->QA = NULL;
-    input->nQA = 0;
+    // input->nQA = 0;
 
     //
     // Visualizza la sintassi del passaggio dei parametri da riga comandi
@@ -543,28 +651,111 @@ int main(int argc, char const *argv[])
         }
     }
 
+    // t = clock();
+    // kdtree(input);
+    // t = clock() - t;
+    // time = ((float)t) / CLOCKS_PER_SEC;
+    // printf("\n\ntime= %f seconds\n", time);
+
+    // t = clock();
+    // range_query(input);
+    // t = clock() - t;
+    // time = ((float)t) / CLOCKS_PER_SEC;
+    // printf("\n\ntime= %f seconds\n", time);
+
+    if (input->h > 0)
+    {
+        t = clock();
+        pca(input);
+        t = clock() - t;
+        time = ((float)t) / CLOCKS_PER_SEC;
+        sprintf(fname, "%s.U", input->filename);
+        save_data(fname, input->U, input->n, input->h);
+        sprintf(fname, "%s.V", input->filename);
+        save_data(fname, input->V, input->k, input->h);
+    }
+    else
+        time = -1;
+
+    if (!input->silent)
+        printf("\nPCA time = %.3f secs\n", time);
+    else
+        printf("%.3f\n", time);
+
+    //
+    // Costruzione K-d-Tree
+    //
+
+    // if (input->kdtree)
+    // {
     t = clock();
     kdtree(input);
     t = clock() - t;
     time = ((float)t) / CLOCKS_PER_SEC;
-    printf("\n\ntime= %f seconds\n", time);
-
-    t = clock();
-    range_query(input);
-    t = clock() - t;
-    time = ((float)t) / CLOCKS_PER_SEC;
-    printf("\n\ntime= %f seconds\n", time);
-
-    // if (input->kdtree)
-    // {
-    //     t = clock();
-    //     kdtree(input);
-    //     t = clock() - t;
-    //     time = ((float)t) / CLOCKS_PER_SEC;
     // }
     // else
     //     time = -1;
+    if (!input->silent)
+        printf("\nIndexing time = %.3f secs\n", time);
+    else
+        printf("%.3f\n", time);
 
+    //
+    // Range query search
+    //
+
+    if (input->r >= 0)
+    {
+        t = clock();
+        range_query(input);
+        t = clock() - t;
+        time = ((float)t) / CLOCKS_PER_SEC;
+    }
+    else
+        time = -1;
+    if (!input->silent)
+        printf("\nQuerying time = %.3f secs\n", time);
+    else
+        printf("%.3f\n", time);
+
+    //
+    // Salva il risultato delle query
+    // da modificare se si modifica il formato delle matrici di output
+    //
+
+    if (input->r >= 0)
+    {
+        if (!input->silent && input->display)
+        {
+            //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
+            printf("\nQuery Answer:\n");
+            int flag = 0;
+            for (i = 0; i < input->nq; i++)
+            {
+                for (j = 0; j < input->n; j++)
+                {
+                    if (input->QA[i * input->n + j] == -1)
+                    {
+                        // printf("]");
+                        break;
+                    }
+                    if (flag == 0)
+                    {
+                        printf("\nid_q %d: [", i);
+                        flag = 1;
+                    }
+                    printf("%d, ", input->QA[i * input->n + j]);
+                }
+                flag = 0;
+            }
+            printf("\n");
+        }
+        sprintf(fname, "%s.qa", input->filename);
+        // save_data(fname, input->QA, input->nQA, 2);
+    }
+
+    if (!input->silent)
+        printf("\nDone.\n");
 
     return 0;
 }

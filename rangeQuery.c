@@ -163,10 +163,8 @@ int *rangeQueryChild(MATRIX ds, KDTREE node, int n, int k, MATRIX q, int indexQ,
     if (euclideanDistanceDataset(ds, node->indexMedianPoint, q, indexQ, k) <= r)
     {
         list[indexList] = node->indexMedianPoint;
-        printf("\nindex= %d ", indexList);
 
         indexList++;
-        printf("   dopo index= %d ", indexList);
     }
 
     if (node->left != NULL)
@@ -195,9 +193,7 @@ int *rangeQueryRoot(MATRIX ds, KDTREE root, int n, int k, MATRIX q, int indexQ, 
     if (euclideanDistanceDataset(ds, root->indexMedianPoint, q, indexQ, k) <= r)
     {
         list[indexList] = root->indexMedianPoint;
-        printf("\nindex= %d ", indexList);
         indexList++;
-        printf("   dopo index= %d ", indexList);
     }
 
     if (root->left != NULL)
@@ -227,10 +223,9 @@ void range_query(params *input)
         printf("\nNO MEMORIA");
         exit(1);
     }
-    int i;
-    for (i = 1999; i < input->nq; i++)
+    int i, indexList;
+    for (i = 0; i < input->nq; i++)
     {
-        printf("\niterazione %d ", i);
         int *list = malloc(input->n * sizeof(int));
         rangeQueryRoot(input->ds, input->kdtree, input->n, input->k, input->qs, i, input->r, 0, input->region, point, list);
         // input->nQA += indexList;
@@ -239,6 +234,8 @@ void range_query(params *input)
         input->QA[i] = list;
 
     }
+
+
 }
 
 /*
