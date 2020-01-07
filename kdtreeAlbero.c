@@ -44,7 +44,7 @@ typedef struct
 
     //STRUTTURE OUTPUT MODIFICABILI
     int *QA; //risposte alle query in forma di coppie di interi (id_query, id_vicino)
-    // int nQA; //numero di risposte alle query
+    int nQA; //numero di risposte alle query
 } params;
 
 struct kdtree_node
@@ -478,6 +478,7 @@ void range_query(params *input)
     {
         rangeQueryRoot(input->ds, input->kdtree, input->n, input->k, input->qs, i, input->r, 0, input->region, point, input->QA);
         input->QA[i * input->n + indexList] = -1;
+        input->nQA += indexList + 1;
         indexList = 0;
     }
     free_block(point);
@@ -486,31 +487,31 @@ void range_query(params *input)
 int main(int argc, char const *argv[])
 {
     char fname[256];
+    char* dsname;
     int i, j, k;
     clock_t t;
     float time;
-
+    
     //
     // Imposta i valori di default dei parametri
     //
-
-    params *input = malloc(sizeof(params));
-
+    
+    params* input = malloc(sizeof(params));
+    
     input->filename = NULL;
     input->h = 0;
     input->kdtree = NULL;
-    input->r = 0;
+    input->r = -1;
     input->silent = 0;
-    input->display = 1;
+    input->display = 0;
     input->QA = NULL;
-    // input->nQA = 0;
-
+    input->nQA = 0;
+    
     //
     // Visualizza la sintassi del passaggio dei parametri da riga comandi
     //
-
-    if (argc <= 1 && !input->silent)
-    {
+    
+    if (argc <= 1 && !input->silent) {
         printf("Usage: %s <data_name> [-pca <h>] [-kdtree [-rq <r>]]\n", argv[0]);
         printf("\nParameters:\n");
         printf("\t-d: display query results\n");
@@ -521,180 +522,140 @@ int main(int argc, char const *argv[])
         printf("\n");
         exit(0);
     }
+    
+    //
+    // Legge i valori dei parametri da riga comandi
+    //
+    
     int par = 1;
-    while (par < argc)
-    {
-        if (par == 1)
-        {
+    while (par < argc) {
+        if (par == 1) {
             input->filename = argv[par];
             par++;
-        }
-        else if (strcmp(argv[par], "-s") == 0)
-        {
+        } else if (strcmp(argv[par],"-s") == 0) {
             input->silent = 1;
             par++;
-        }
-        else if (strcmp(argv[par], "-d") == 0)
-        {
+        } else if (strcmp(argv[par],"-d") == 0) {
             input->display = 1;
             par++;
-        }
-        else if (strcmp(argv[par], "-pca") == 0)
-        {
+        } else if (strcmp(argv[par],"-pca") == 0) {
             par++;
-            if (par >= argc)
-            {
+            if (par >= argc) {
                 printf("Missing h value!\n");
                 exit(1);
             }
             input->h = atoi(argv[par]);
             par++;
-        }
-        else if (strcmp(argv[par], "-kdtree") == 0)
-        {
+        } else if (strcmp(argv[par],"-kdtree") == 0) {
             input->kdtree_enabled = 1;
             par++;
-            if (par < argc && strcmp(argv[par], "-rq") == 0)
-            {
+            if (par < argc && strcmp(argv[par],"-rq") == 0) {
                 par++;
-                if (par >= argc)
-                {
+                if (par >= argc) {
                     printf("Missing radius value!\n");
                     exit(1);
                 }
                 input->r = atof(argv[par]);
-                if (input->r < 0)
-                {
+                if(input->r < 0){
                     printf("Range query radius must be non-negative!\n");
                     exit(1);
                 }
                 par++;
             }
-        }
-        else
-        {
-            printf("WARNING: unrecognized parameter '%s'!\n", argv[par]);
+        } else{
+            printf("WARNING: unrecognized parameter '%s'!\n",argv[par]);
             par++;
         }
     }
-
+    
     //
     // Legge i dati e verifica la correttezza dei parametri
     //
-
-    if (input->filename == NULL || strlen(input->filename) == 0)
-    {
+    
+    if(input->filename == NULL || strlen(input->filename) == 0){
         printf("Missing input file name!\n");
         exit(1);
     }
-
+    
     sprintf(fname, "%s.ds", input->filename);
+    dsname = basename(strdup(input->filename));
     input->ds = load_data(fname, &input->n, &input->k);
 
-    if (input->h < 0)
-    {
+    if(input->h < 0){
         printf("Invalid value of PCA parameter h!\n");
         exit(1);
     }
-    if (input->h > input->k)
-    {
+    if(input->h > input->k){
         printf("Value of PCA parameter h exceeds data set dimensions!\n");
         exit(1);
     }
-
-    if (input->r >= 0)
-    {
+    
+    if(input->r >= 0){
         sprintf(fname, "%s.qs", input->filename);
-        int k;
         input->qs = load_data(fname, &input->nq, &k);
-        if (input->k != k)
-        {
+        if(input->k != k){
             printf("Data set dimensions and query set dimensions are not compatible!\n");
             exit(1);
         }
     }
-
+    
     //
     // Visualizza il valore dei parametri
     //
-
-    if (!input->silent)
-    {
+    
+    if(!input->silent){
         printf("Input file name: '%s'\n", input->filename);
         printf("Data set size [n]: %d\n", input->n);
         printf("Number of dimensions [k]: %d\n", input->k);
-        if (input->h > 0)
-        {
+        if(input->h > 0){
             printf("PCA search enabled\n");
-            printf("Number of principal components [h]: %i\n", input->h);
-        }
-        else
-        {
+            printf("Number of principal components [h]: %i\n",input->h);
+        }else{
             printf("PCA search disabled\n");
         }
-        if (input->kdtree_enabled)
-        {
+        if(input->kdtree_enabled){
             printf("Kdtree building enabled\n");
-            if (input->r >= 0)
-            {
+            if(input->r >= 0){
                 printf("Range query search enabled\n");
-                printf("Range query search radius [r]: %f\n", input->r);
-            }
-            else
-            {
+                printf("Range query search radius [r]: %f\n",input->r);
+            }else{
                 printf("Range query search disabled\n");
             }
-        }
-        else
-        {
+        }else{
             printf("Kdtree building disabled\n");
         }
     }
 
-    // t = clock();
-    // kdtree(input);
-    // t = clock() - t;
-    // time = ((float)t) / CLOCKS_PER_SEC;
-    // printf("\n\ntime= %f seconds\n", time);
-
-    // t = clock();
-    // range_query(input);
-    // t = clock() - t;
-    // time = ((float)t) / CLOCKS_PER_SEC;
-    // printf("\n\ntime= %f seconds\n", time);
-
-    if (input->h > 0)
-    {
+    //
+    // Calcolo PCA
+    //
+    
+    if(input->h > 0){
         t = clock();
         pca(input);
         t = clock() - t;
-        time = ((float)t) / CLOCKS_PER_SEC;
-        sprintf(fname, "%s.U", input->filename);
-        save_data(fname, input->U, input->n, input->h);
-        sprintf(fname, "%s.V", input->filename);
-        save_data(fname, input->V, input->k, input->h);
-    }
-    else
+        time = ((float)t)/CLOCKS_PER_SEC;
+        sprintf(fname, "%s.U", dsname);
+        sprintf(fname, "%s.V", dsname);
+    }else
         time = -1;
-
+       
     if (!input->silent)
         printf("\nPCA time = %.3f secs\n", time);
     else
         printf("%.3f\n", time);
-
+    
     //
     // Costruzione K-d-Tree
     //
-
-    // if (input->kdtree)
-    // {
-    t = clock();
-    kdtree(input);
-    t = clock() - t;
-    time = ((float)t) / CLOCKS_PER_SEC;
-    // }
-    // else
-    //     time = -1;
+    
+    if(input->kdtree){
+        t = clock();
+        kdtree(input);
+        t = clock() - t;
+        time = ((float)t)/CLOCKS_PER_SEC;
+    }else
+        time = -1;
     if (!input->silent)
         printf("\nIndexing time = %.3f secs\n", time);
     else
@@ -703,21 +664,19 @@ int main(int argc, char const *argv[])
     //
     // Range query search
     //
-
-    if (input->r >= 0)
-    {
+    
+    if(input->r >= 0){
         t = clock();
         range_query(input);
         t = clock() - t;
-        time = ((float)t) / CLOCKS_PER_SEC;
-    }
-    else
+        time = ((float)t)/CLOCKS_PER_SEC;
+    }else
         time = -1;
     if (!input->silent)
         printf("\nQuerying time = %.3f secs\n", time);
     else
         printf("%.3f\n", time);
-
+    
     //
     // Salva il risultato delle query
     // da modificare se si modifica il formato delle matrici di output
