@@ -5,6 +5,7 @@
 #include <time.h>
 #include <xmmintrin.h>
 #include <malloc.h>
+#include <libgen.h>
 
 #define MATRIX float *
 #define KDTREE struct kdtree_node * // modificare con il tipo di dato utilizzato
@@ -23,6 +24,13 @@ float distanceRoot(float *, MATRIX, int, int, float *);
 float distanceChild(KDTREE, MATRIX, int, int, float *, int);
 int *rangeQueryChild(MATRIX, KDTREE, int, int, MATRIX, int, int, int, float *, int *);
 int *rangeQueryRoot(MATRIX, KDTREE, int, int, MATRIX, int, int, int, float *, float *, int *);
+void centraMatrice(MATRIX, int, int);
+float calcolaT(float *, int, int, int);
+void prodottoMatrice(float *, int, int, MATRIX, int, int, float *, int, int, int, int, int);
+void prodottoMatriceTrasp(float *, int, int, MATRIX, int, int, float *, int, int, int, int, int);
+float norma(float *, int, int, int);
+void dividi(float *, int, int, int, float);
+void aggiornaDataset(MATRIX, int, int, float *, int, int, float *, int, int, int, int, int);
 
 typedef struct
 {
@@ -77,6 +85,25 @@ void dealloc_matrix(MATRIX mat)
     free_block(mat);
 }
 
+/*
+* 
+* 	load_data
+* 	=========
+* 
+*	Legge da file una matrice di N righe
+* 	e M colonne e la memorizza in un array lineare in row-major order
+* 
+* 	Codifica del file:
+* 	primi 4 byte: numero di righe (N) --> numero intero a 32 bit
+* 	successivi 4 byte: numero di colonne (M) --> numero intero a 32 bit
+* 	successivi N*M*4 byte: matrix data in row-major order --> numeri floating-point a precisione singola
+* 
+*****************************************************************************
+*	Se lo si ritiene opportuno, è possibile cambiare la codifica in memoria
+* 	della matrice. 
+*****************************************************************************
+* 
+*/
 MATRIX load_data(char *filename, int *n, int *k)
 {
     FILE *fp;
@@ -92,8 +119,6 @@ MATRIX load_data(char *filename, int *n, int *k)
 
     status = fread(&cols, sizeof(int), 1, fp);
     status = fread(&rows, sizeof(int), 1, fp);
-
-    printf("\ncolonne= %d\trighe= %d\n", cols, rows);
 
     MATRIX data = alloc_matrix(rows, cols);
     status = fread(data, sizeof(float), rows * cols, fp);
@@ -126,8 +151,8 @@ void save_data(char *filename, void *X, int n, int k)
     fp = fopen(filename, "wb");
     if (X != NULL)
     {
-        fwrite(&n, 4, 1, fp);
         fwrite(&k, 4, 1, fp);
+        fwrite(&n, 4, 1, fp);
         for (i = 0; i < n; i++)
         {
             fwrite(X, 4, k, fp);
@@ -136,21 +161,6 @@ void save_data(char *filename, void *X, int n, int k)
         }
     }
     fclose(fp);
-}
-
-/*
-*	PCA
-* 	=====================
-*/
-void pca(params *input)
-{
-
-    // -------------------------------------------------
-    // Codificare qui l'algoritmo PCA
-    // -------------------------------------------------
-    // prova(input);
-    // Calcola le matrici U e V
-    // -------------------------------------------------
 }
 
 void swap(int *a, int *b)
@@ -212,7 +222,7 @@ float euclideanDistance(float *point, MATRIX q, int indexQ, int k)
     int i;
     for (i = 0; i < k; i++)
     {
-        sum += powf(point[i] - q[indexQ * k + i], 2);
+        sum += (point[i] - q[indexQ * k + i]) * (point[i] - q[indexQ * k + i]);
     }
     return sqrtf(sum);
 }
@@ -224,7 +234,7 @@ float euclideanDistanceDataset(MATRIX ds, int indexMedian, MATRIX q, int indexQ,
     int i;
     for (i = 0; i < k; i++)
     {
-        sum += powf(ds[indexMedian * k + i] - q[indexQ * k + i], 2);
+        sum += (ds[indexMedian * k + i] - q[indexQ * k + i]) * (ds[indexMedian * k + i] - q[indexQ * k + i]);
     }
     return sqrtf(sum);
 }
@@ -375,6 +385,7 @@ int *rangeQueryChild(MATRIX ds, KDTREE node, int n, int k, MATRIX q, int indexQ,
 
     if (distanceChild(node, q, indexQ, k, point, cut) > r)
     {
+        printf("stop  ");
         return list;
     }
 
@@ -423,6 +434,159 @@ int *rangeQueryRoot(MATRIX ds, KDTREE root, int n, int k, MATRIX q, int indexQ, 
         rangeQueryChild(ds, root->right, n, k, q, indexQ, r, liv + 1, point, list);
     }
     return list;
+}
+
+void centraMatrice(MATRIX ds, int n, int k)
+{
+    int i, j;
+    float acc, mean;
+    for (j = 0; j < k; j++)
+    {
+        acc = 0;
+        for (i = 0; i < n; i++)
+        {
+            acc += ds[i * k + j];
+        }
+        mean = acc / n;
+        i = 0;
+        for (i = 0; i < n; i++)
+        {
+            ds[i * k + j] = ds[i * k + j] - mean;
+        }
+    }
+}
+
+float calcolaT(float *a, int n, int k, int cut)
+{
+    int i;
+    float res = 0;
+    for (i = 0; i < n; i++)
+    {
+        res += powf(a[i * k + cut], 2);
+    }
+    return res;
+}
+
+
+void prodottoMatriceTrasp(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int k, int n, int h)
+{
+    int m, i, j;
+    float sum = 0;
+    for (m = 0; m < rigaA; m++)
+    {
+        for (i = 0; i < colB; i++)
+        {
+            sum = 0;
+            for (j = 0; j < rigaB; j++)
+            {
+                sum += ds[j * k + m] * vect[j * h + cut];
+            }
+            result[m * h + cut] = sum;
+        }
+    }
+}
+void prodottoMatrice(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int k, int n, int h)
+{
+    int m, i, j;
+    float sum = 0;
+    for (m = 0; m < rigaA; m++)
+    {
+        for (i = 0; i < colB; i++)
+        {
+            sum = 0;
+            for (j = 0; j < rigaB; j++)
+            {
+                sum += ds[m * k + j] * vect[j * h + cut];
+            }
+            result[m * h + cut] = sum;
+        }
+    }
+}
+
+float norma(float *v, int numRig, int numCol, int cut)
+{
+    float acc;
+    int i;
+    for (i = 0; i < numRig; i++)
+    {
+        acc += pow(v[i * numCol + cut], 2);
+    }
+    return sqrtf(acc);
+}
+
+void dividi(float *v, int numRig, int numCol, int cut, float norm)
+{
+
+    int i;
+    for (i = 0; i < numRig; i++)
+    {
+        v[i * numCol + cut] = v[i * numCol + cut] / norm;
+    }
+}
+
+void aggiornaDataset(MATRIX ds, int numRigDS, int numColDS, float *u, int rigaA, int colA, float *v, int rigaB, int colB, int h, int k, int cut)
+{
+
+    int m, i, j;
+    float sum = 0;
+    for (m = 0; m < rigaA; m++)
+    {
+        sum = 0;
+        for (i = 0; i < colB; i++)
+        {
+            sum += u[m * h + cut] * v[i * h + cut];
+        }
+        ds[m * k + i] -= sum;
+    }
+
+}
+
+/*
+*	PCA
+* 	=====================
+*/
+void pca(params *input)
+{
+    printf("\nINIZIO PCA");
+
+    centraMatrice(input->ds, input->n, input->k);
+    float theta = 1 * exp(-8);
+    input->V = malloc(input->k * input->h * sizeof(float)); //dimensioni (k x h)
+    input->U = malloc(input->n * input->h * sizeof(float)); // dimensioni (n x h)
+    if (input->V == NULL || input->U == NULL)
+    {
+        printf("\nNo MEMORIA");
+        exit(1);
+    }
+    int i;
+    for (i = 0; i < input->n; i++)
+    {
+        input->U[i * input->h] = input->ds[i * input->k];
+    }
+    int t, t1;
+    i = 0;
+    float norm, tempV;
+    for (i = 0; i < input->h; i++)
+    {
+        do
+        {
+            prodottoMatriceTrasp(input->V, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, input->k, input->n, input->h);
+
+            t = calcolaT(input->U, input->n, input->h, i);
+            dividi(input->V, input->k, input->h, i, t);
+            norm = norma(input->V, input->k, input->h, i);
+            dividi(input->V, input->k, input->h, i, norm);
+
+            prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, input->V, input->k, 1, input->k, input->n, input->h);
+            tempV = calcolaT(input->V, input->k, input->h, i);
+            dividi(input->U, input->n, input->h, i, tempV);
+            t1 = calcolaT(input->U, input->n, input->h, i);
+
+        } while (t1 - t >= theta * t1);
+
+        aggiornaDataset(input->ds, input->n, input->k, input->U, input->n, 1, input->V, 1, input->k, input->h, input->k, i);
+    }
+    printf("\nFINE PCA");
 }
 
 /*
@@ -486,18 +650,19 @@ void range_query(params *input)
 
 int main(int argc, char const *argv[])
 {
+
     char fname[256];
-    char* dsname;
+    char *dsname;
     int i, j, k;
     clock_t t;
     float time;
-    
+
     //
     // Imposta i valori di default dei parametri
     //
-    
-    params* input = malloc(sizeof(params));
-    
+
+    params *input = malloc(sizeof(params));
+
     input->filename = NULL;
     input->h = 0;
     input->kdtree = NULL;
@@ -506,12 +671,13 @@ int main(int argc, char const *argv[])
     input->display = 0;
     input->QA = NULL;
     input->nQA = 0;
-    
+
     //
     // Visualizza la sintassi del passaggio dei parametri da riga comandi
     //
-    
-    if (argc <= 1 && !input->silent) {
+
+    if (argc <= 1 && !input->silent)
+    {
         printf("Usage: %s <data_name> [-pca <h>] [-kdtree [-rq <r>]]\n", argv[0]);
         printf("\nParameters:\n");
         printf("\t-d: display query results\n");
@@ -522,119 +688,149 @@ int main(int argc, char const *argv[])
         printf("\n");
         exit(0);
     }
-    
+
     //
     // Legge i valori dei parametri da riga comandi
     //
-    
+
     int par = 1;
-    while (par < argc) {
-        if (par == 1) {
+    while (par < argc)
+    {
+        if (par == 1)
+        {
             input->filename = argv[par];
             par++;
-        } else if (strcmp(argv[par],"-s") == 0) {
+        }
+        else if (strcmp(argv[par], "-s") == 0)
+        {
             input->silent = 1;
             par++;
-        } else if (strcmp(argv[par],"-d") == 0) {
+        }
+        else if (strcmp(argv[par], "-d") == 0)
+        {
             input->display = 1;
             par++;
-        } else if (strcmp(argv[par],"-pca") == 0) {
+        }
+        else if (strcmp(argv[par], "-pca") == 0)
+        {
             par++;
-            if (par >= argc) {
+            if (par >= argc)
+            {
                 printf("Missing h value!\n");
                 exit(1);
             }
             input->h = atoi(argv[par]);
             par++;
-        } else if (strcmp(argv[par],"-kdtree") == 0) {
+        }
+        else if (strcmp(argv[par], "-kdtree") == 0)
+        {
             input->kdtree_enabled = 1;
             par++;
-            if (par < argc && strcmp(argv[par],"-rq") == 0) {
+            if (par < argc && strcmp(argv[par], "-rq") == 0)
+            {
                 par++;
-                if (par >= argc) {
+                if (par >= argc)
+                {
                     printf("Missing radius value!\n");
                     exit(1);
                 }
                 input->r = atof(argv[par]);
-                if(input->r < 0){
+                if (input->r < 0)
+                {
                     printf("Range query radius must be non-negative!\n");
                     exit(1);
                 }
                 par++;
             }
-        } else{
-            printf("WARNING: unrecognized parameter '%s'!\n",argv[par]);
+        }
+        else
+        {
+            printf("WARNING: unrecognized parameter '%s'!\n", argv[par]);
             par++;
         }
     }
-    
+
     //
     // Legge i dati e verifica la correttezza dei parametri
     //
-    
-    if(input->filename == NULL || strlen(input->filename) == 0){
+
+    if (input->filename == NULL || strlen(input->filename) == 0)
+    {
         printf("Missing input file name!\n");
         exit(1);
     }
-    
+
     sprintf(fname, "%s.ds", input->filename);
+
     dsname = basename(strdup(input->filename));
+
     input->ds = load_data(fname, &input->n, &input->k);
 
-    if(input->h < 0){
+    if (input->h < 0)
+    {
         printf("Invalid value of PCA parameter h!\n");
         exit(1);
     }
-    if(input->h > input->k){
+    if (input->h > input->k)
+    {
         printf("Value of PCA parameter h exceeds data set dimensions!\n");
         exit(1);
     }
-    
-    if(input->r >= 0){
+
+    if (input->r >= 0)
+    {
         sprintf(fname, "%s.qs", input->filename);
         input->qs = load_data(fname, &input->nq, &k);
-        if(input->k != k){
+        if (input->k != k)
+        {
             printf("Data set dimensions and query set dimensions are not compatible!\n");
             exit(1);
         }
     }
-    
+
     //
     // Visualizza il valore dei parametri
     //
-    
-    if(!input->silent){
+
+    if (!input->silent)
+    {
         printf("Input file name: '%s'\n", input->filename);
         printf("Data set size [n]: %d\n", input->n);
         printf("Number of dimensions [k]: %d\n", input->k);
-        if(input->h > 0){
+        if (input->h > 0)
+        {
             printf("PCA search enabled\n");
-            printf("Number of principal components [h]: %i\n",input->h);
-        }else{
+            printf("Number of principal components [h]: %i\n", input->h);
+        }
+        else
+        {
             printf("PCA search disabled\n");
         }
-        if(input->kdtree_enabled){
+        if (input->kdtree_enabled)
+        {
             printf("Kdtree building enabled\n");
-            if(input->r >= 0){
+            if (input->r >= 0)
+            {
                 printf("Range query search enabled\n");
-                printf("Range query search radius [r]: %f\n",input->r);
-            }else{
+                printf("Range query search radius [r]: %f\n", input->r);
+            }
+            else
+            {
                 printf("Range query search disabled\n");
             }
-        }else{
+        }
+        else
+        {
             printf("Kdtree building disabled\n");
         }
     }
 
-    //
-    // Calcolo PCA
-    //
-    
     if(input->h > 0){
         t = clock();
         pca(input);
         t = clock() - t;
         time = ((float)t)/CLOCKS_PER_SEC;
+        printf("\n %s \n",dsname);
         sprintf(fname, "%s.U", dsname);
         sprintf(fname, "%s.V", dsname);
     }else
@@ -649,7 +845,7 @@ int main(int argc, char const *argv[])
     // Costruzione K-d-Tree
     //
     
-    if(input->kdtree){
+    if(input->kdtree_enabled){
         t = clock();
         kdtree(input);
         t = clock() - t;
@@ -710,7 +906,7 @@ int main(int argc, char const *argv[])
             printf("\n");
         }
         sprintf(fname, "%s.qa", input->filename);
-        // save_data(fname, input->QA, input->nQA, 2);
+        save_data(fname, input->QA, input->nQA, 2);
     }
 
     if (!input->silent)

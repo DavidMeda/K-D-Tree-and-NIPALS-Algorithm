@@ -15,8 +15,8 @@ void prodottoMatrice(float *, int, int, MATRIX, int, int, float *, int, int, int
 void prodottoMatriceTrasp(float *, int, int, MATRIX, int, int, float *, int, int, int, int, int);
 float norma(float *, int, int, int);
 void dividi(float *, int, int, int, float);
-// void aggiornaDataset(MATRIX, int, int, float *, float *, int, int);
 void aggiornaDataset(MATRIX, int, int, float *, int, int, float *, int, int, int, int, int);
+// void aggiornaDataset(MATRIX, int, int, float *, float *, int, int);
 
 typedef struct
 {
