@@ -1,3 +1,0 @@
-nasm -f elf32 $1.nasm 
-gcc -m32 $1.o -o $1
-time ./$1

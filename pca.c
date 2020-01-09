@@ -12,7 +12,7 @@
 void centraMatrice(MATRIX, int, int);
 float calcolaT(float *, int, int, int);
 void prodottoMatrice(float *, int, int, MATRIX, int, int, float *, int, int, int, int, int);
-void prodottoMatriceTrasp(float *, int, int, MATRIX, int, int, float *, int, int, int, int, int);
+void prodottoMatriceTrasp(float *, int, int, MATRIX, int, int, float *, int, int,int, int, int, int);
 float norma(float *, int, int, int);
 void dividi(float *, int, int, int, float);
 void aggiornaDataset(MATRIX, int, int, float *, int, int, float *, int, int, int, int, int);
@@ -137,7 +137,7 @@ float calcolaT(float *a, int n, int k, int cut)
 
 //per dataset transposto rigaA=k, colA=n e rigaB=n;
 
-void prodottoMatriceTrasp(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int k, int n, int h)
+void prodottoMatriceTrasp(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int cut2, int k, int n, int h)
 {
     int m, i, j;
     float sum = 0;
@@ -148,11 +148,11 @@ void prodottoMatriceTrasp(float *result, int rigaRes, int cut, MATRIX ds, int ri
             sum = 0;
             for (j = 0; j < rigaB; j++)
             {
-                sum += ds[j * k + m] * vect[j * h + cut];
-                // printf("\nds = %f , u = %f , sum = %f ", ds[j * k + m], vect[j * h + cut], sum);
+                sum += ds[j * k + m] * vect[j * h + cut2];
+                printf("\nds = %f , u [cut %d] = %f , sum = %f ", ds[j * k + m],cut2, vect[j * h + cut2], sum);
             }
             result[m * h + cut] = sum;
-            // printf("V = %f \n", result[m * h + cut]);
+            printf("V = %f \n", result[m * h + cut]);
         }
     }
     /* Perform multiplication algorithm 
@@ -332,15 +332,25 @@ void pca(params *input)
     // printf("\n");
 
     int cont = 0;
+    int cut = 0;
     for (i = 0; i < input->h; i++)
     {
         // printf(" inizio iterazione %d ", i);
         do
         {
+            
+            if(i==0){
+                cut = 0;
+            }
+            else
+            {
+                cut = i-1;
+            }
+            
 
-            prodottoMatriceTrasp(input->V, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, input->k, input->n, input->h);
+            prodottoMatriceTrasp(input->V, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, cut, input->k, input->n, input->h);
 
-            t = calcolaT(input->U, input->n, input->h, i);
+            t = calcolaT(input->U, input->n, input->h, i);//devo sostituire i con cut
             dividi(input->V, input->k, input->h, i, t);
             norm = norma(input->V, input->k, input->h, i);
             dividi(input->V, input->k, input->h, i, norm);
@@ -350,10 +360,13 @@ void pca(params *input)
             dividi(input->U, input->n, input->h, i, tempV);
             t1 = calcolaT(input->U, input->n, input->h, i);
             cont++;
-            // printf("\ncont %d", cont);
+            printf("\ncont %d", cont);
 
         } while (t1 - t >= theta * t1);
         // printf("\n fine iterazione %d ", i);
+
+
+
 
         aggiornaDataset(input->ds, input->n, input->k, input->U, input->n, 1, input->V, 1, input->k, input->h, input->k, i);
     }
