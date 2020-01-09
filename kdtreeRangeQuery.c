@@ -132,7 +132,6 @@ void read_ris(char *filename, int *n)
     }
 }
 
-
 /*
 * 
 * 	save_data
@@ -261,8 +260,10 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     int cut = liv % k; //variabile di cut per indice colonna da usare
     struct kdtree_node *node = (struct kdtree_node *)get_block(sizeof(struct kdtree_node), 1);
     node->region = get_block(sizeof(float), 2 * k);
-    for (int i = 0; i < (2 * k); i++)
-        node->region[i] = regionp[i];
+
+    memcpy(node->region, regionp, sizeof(float) * 2 * k);
+    // for (int i = 0; i < (2 * k); i++)
+    //     node->region[i] = regionp[i];
     node->region[2 * (cut - 1)] = ds[indexSorted[start] * k + (cut - 1)];
     node->region[2 * (cut - 1) + 1] = ds[indexSorted[end - 1] * k + (cut - 1)];
 
@@ -357,6 +358,7 @@ float *findRegion(MATRIX ds, int n, int k)
 /*  METODI PCA
 *
 */
+extern float sommatoria(MATRIX ds, int n, int k, int col);
 
 void centraMatrice(MATRIX ds, int n, int k)
 {
@@ -365,6 +367,8 @@ void centraMatrice(MATRIX ds, int n, int k)
     for (j = 0; j < k; j++)
     {
         acc = 0;
+
+        // acc = sommatoria(ds, n, k, j);
         for (i = 0; i < n; i++)
         {
             acc += ds[i * k + j];
@@ -484,6 +488,7 @@ void pca(params *input)
         exit(1);
     }
     int i;
+
     for (i = 0; i < input->n; i++)
     {
         input->U[i * input->h] = input->ds[i * input->k];
@@ -586,7 +591,7 @@ void pca(params *input)
 void kdtree(params *input)
 {
 
-    int *indexSorted = (int *)get_block(sizeof(int), input->n); //vettore che conterra indice riga dei punti ordinati
+    int *indexSorted = (int *)get_block(sizeof(int), input->n);
 
     if (indexSorted == NULL)
     {
