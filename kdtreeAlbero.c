@@ -163,614 +163,614 @@ void save_data(char *filename, void *X, int n, int k)
     fclose(fp);
 }
 
-void swap(int *a, int *b)
-{
-    int t = *a;
-    *a = *b;
-    *b = t;
-}
-
-int partition(MATRIX dataset, int *indexSorted, int low, int high, int k, int cut)
-{
-    float pivot = dataset[indexSorted[high - 1] * k + cut];
-    int i = (low - 1);
-    int j;
-    for (j = low; j < high - 1; j++)
-    {
-        if (dataset[indexSorted[j] * k + cut] < pivot)
-        {
-            i++;
-            swap(&indexSorted[i], &indexSorted[j]);
-        }
-    }
-
-    swap(&indexSorted[i + 1], &indexSorted[high - 1]);
-    return (i + 1);
-}
-
-void quicksort(MATRIX dataset, int *indexSorted, int cut, int k, int low, int high)
-{
-    if (low < high)
-    {
-        int indexPivot = -1;
-
-        indexPivot = partition(dataset, indexSorted, low, high, k, cut);
-
-        quicksort(dataset, indexSorted, cut, k, low, indexPivot);
-        quicksort(dataset, indexSorted, cut, k, indexPivot + 1, high);
-    }
-}
-
-int findMedian(MATRIX dataset, int *indexSorted, int start, int indexMedian, int k, int cut)
-{
-    float median = dataset[indexSorted[indexMedian] * k + cut];
-    int i;
-    for (i = indexMedian - 1; i >= start; i--)
-    {
-        if (dataset[indexSorted[i] * k + cut] < median)
-        {
-            return i + 1;
-        }
-    }
-    return indexMedian;
-}
-
-float euclideanDistance(float *point, MATRIX q, int indexQ, int k)
-{
-
-    float sum = 0;
-    int i;
-    for (i = 0; i < k; i++)
-    {
-        sum += (point[i] - q[indexQ * k + i]) * (point[i] - q[indexQ * k + i]);
-    }
-    return sqrtf(sum);
-}
-
-float euclideanDistanceDataset(MATRIX ds, int indexMedian, MATRIX q, int indexQ, int k)
-{
-
-    float sum = 0;
-    int i;
-    for (i = 0; i < k; i++)
-    {
-        sum += (ds[indexMedian * k + i] - q[indexQ * k + i]) * (ds[indexMedian * k + i] - q[indexQ * k + i]);
-    }
-    return sqrtf(sum);
-}
-
-//distanza tra il punto q del querySet e l'intera regione indicizzata
-float distanceRoot(float *region, MATRIX q, int indexQ, int k, float *point)
-{
-    int j;
-
-    for (j = 0; j < k; j++)
-    {
-        if (q[indexQ * k + j] <= region[2 * j])
-            point[j] = region[2 * j];
-        else if (q[indexQ * k + j] >= region[(2 * j) + 1])
-            point[j] = region[(2 * j) + 1];
-        else
-            point[j] = q[indexQ * k + j];
-    }
-
-    float dist = euclideanDistance(point, q, indexQ, k);
-    // printf(" \nroot dist: %f ", dist);
-    return dist;
-}
-
-float distanceChild(KDTREE node, MATRIX q, int indexQ, int k, float *point, int cut)
-{
-    if (q[indexQ * k + cut] <= node->h_min)
-        point[cut] = q[indexQ * k + cut];
-    else if (q[indexQ * k + cut] >= node->h_max)
-        point[cut] = q[indexQ * k + cut];
-    else
-        point[cut] = q[indexQ * k + cut];
-
-    // printf("\npoint ");
-
-    float dist = euclideanDistance(point, q, indexQ, k);
-    // for (int j = 0; j < k; j++)
-    // {
-    //     printf(" %f ", point[j]);
-    // }
-    // printf(" --- dist[ ]: %f ", dist);
-
-    return dist;
-}
-
-/*
-*   buildTree serve per costruire tutti i nodi del kdtree
-*   il valore end deve essere escluso indici vanno da [start, end) quindi end è escluso l'ultimo elemento si trova a end-1
-*/
-struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, int end, int numEle, int k, int type)
-{
-    if (numEle == 0)
-        return NULL;
-
-    int cut = liv % k; //variabile di cut per indice colonna da usare
-    struct kdtree_node *node = (struct kdtree_node *)get_block(sizeof(struct kdtree_node), 1);
-    node->h_min = ds[indexSorted[start] * k + (cut - 1)];   //valore di coordinata più piccola per il padre
-    node->h_max = ds[indexSorted[end - 1] * k + (cut - 1)]; //valore di coordinata più piccola per il padre
-    node->numPoint = numEle;
-    quicksort(ds, indexSorted, cut, k, start, end);
-
-    int indexMedian = findMedian(ds, indexSorted, start, start + ((end - 1 - start) / 2), k, cut);
-
-    node->medianCoordinate = ds[indexSorted[indexMedian] * k + cut]; //valore di coordinata del punto mediano
-    node->indexMedianPoint = indexSorted[indexMedian];               //indice del punto mediano nel dataset
-
-    int numEleSx = indexMedian - start;
-    int numEleDx = end - indexMedian - 1;
-
-    if (numEleSx == 0 && numEleDx == 0)
-    {
-        node->left = NULL;
-        node->right = NULL;
-        return node;
-    }
-    else if (numEleSx == 0)
-    {
-        node->left = NULL;
-        node->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1);
-        return node;
-    }
-    else if (numEleDx == 0)
-    {
-        node->right = NULL;
-        node->left = buildTree(ds, indexSorted, liv + 1, start, indexMedian, numEleSx, k, 0);
-        return node;
-    }
-    else
-    {
-        node->left = buildTree(ds, indexSorted, liv + 1, start, indexMedian, numEleSx, k, 0);
-        node->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1);
-        return node;
-    }
-}
-
-/*
-*   buildTreeRoot server per costruire solo la radice del hdtree
-*   end è il numero di elementi quindi va fatto end-1 per rpendere l'ultimo indice
-*/
-struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end, int k)
-{
-    if (end <= 0)
-    {
-        printf("\nDATASET NULLO\n");
-        return NULL;
-    }
-    int cut = liv % k; //variabile di cut per indice colonna da usare
-
-    quicksort(ds, indexSorted, cut, k, 0, end);
-
-    int indexMedian = findMedian(ds, indexSorted, 0, (end - 1) / 2, k, cut);
-
-    struct kdtree_node *root = (struct kdtree_node *)get_block(sizeof(struct kdtree_node), 1);
-
-    root->medianCoordinate = ds[indexSorted[indexMedian] * k + cut]; //valore di coordinata del punto mediano
-    root->indexMedianPoint = indexSorted[indexMedian];               //indice del punto mediano nel dataset
-    root->h_min = ds[indexSorted[0] * k + cut];                      //valore di coordinata più piccola
-    root->h_max = ds[indexSorted[end - 1] * k + cut];                //valore di coordinata più grande
-    root->numPoint = end;
-
-    int numEleSx = indexMedian;
-    int numEleDx = end - indexMedian - 1;
-
-    root->left = buildTree(ds, indexSorted, liv + 1, 0, indexMedian, numEleSx, k, 0);
-    root->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1);
-
-    return root;
-}
-
-float *findRegion(MATRIX ds, int n, int k)
-{
-    float *region = (float *)get_block(sizeof(float), k * 2);
-    float h_min, h_max;
-    int j, i;
-    for (j = 0; j < k; j++)
-    {
-        h_min = ds[j];
-        h_max = ds[j];
-        for (i = 0; i < n; i++)
-        {
-            if (h_max < ds[i * k + j])
-                h_max = ds[i * k + j];
-            if (h_min > ds[i * k + j])
-                h_min = ds[i * k + j];
-        }
-        region[2 * j] = h_min;
-        region[(2 * j) + 1] = h_max;
-    }
-    return region;
-}
-
-int indexList = 0;
-
-/*  Questo metodo effettua la rangeQuery sui sottoalberi figli di root, la distanza della region viene effettuata solo per le coordinate di cut del nodo padre
-*   poichè le restanti coordinate non cambiano e alla fine si eseguono le chiamate ricorsive sui figli finchè non si arriva a un nodo foglia
-*/
-int rangeQueryChild(MATRIX ds, KDTREE node, int n, int k, MATRIX q, int indexQ, int r, int liv, float *point, int *list)
-{
-    int cut = (liv - 1) % k; //il cut del nodo padre
-
-    if (distanceChild(node, q, indexQ, k, point, cut) > r)
-    {
-        printf("stop  ");
-        return -1;
-    }
-
-    if (euclideanDistanceDataset(ds, node->indexMedianPoint, q, indexQ, k) <= r)
-    {
-        list[indexQ * n + indexList] = node->indexMedianPoint;
-
-        indexList++;
-    }
-
-    if (node->left != NULL)
-    {
-        rangeQueryChild(ds, node->left, n, k, q, indexQ, r, liv + 1, point, list);
-        // return 1;
-    }
-    if (node->right != NULL)
-    {
-        rangeQueryChild(ds, node->right, n, k, q, indexQ, r, liv + 1, point, list);
-        // return 1;
-    }
-    return 1;
-}
-
-/*  Questo metodo server per effettuare il controllo tra il punto di query e la regione indicizzata dall'intero dataset
-*   viene usato region che contiene il vettore delle k coppia di (h_min, h_max)
-*   alla fine il metodo richiama la ricerca sui suoi figli
-*/
-int rangeQueryRoot(MATRIX ds, KDTREE root, int n, int k, MATRIX q, int indexQ, int r, int liv, float *region, float *point, int *list)
-{
-
-    if (distanceRoot(region, q, indexQ, k, point) > r)
-    {
-        return -1;
-    }
-
-    if (euclideanDistanceDataset(ds, root->indexMedianPoint, q, indexQ, k) <= r)
-    {
-        list[indexQ * n + indexList] = root->indexMedianPoint;
-        indexList++;
-    }
-
-    if (root->left != NULL)
-    {
-        rangeQueryChild(ds, root->left, n, k, q, indexQ, r, liv + 1, point, list);
-    }
-    if (root->right != NULL)
-    {
-        rangeQueryChild(ds, root->right, n, k, q, indexQ, r, liv + 1, point, list);
-    }
-    return 1;
-}
-
-void centraMatrice(MATRIX ds, int n, int k)
-{
-    int i, j;
-    float acc, mean;
-    for (j = 0; j < k; j++)
-    {
-        acc = 0;
-        for (i = 0; i < n; i++)
-        {
-            acc += ds[i * k + j];
-        }
-        mean = acc / n;
-        i = 0;
-        for (i = 0; i < n; i++)
-        {
-            ds[i * k + j] = ds[i * k + j] - mean;
-        }
-    }
-}
-
-float calcolaT(float *a, int n, int k, int cut)
-{
-    int i;
-    float res = 0;
-    for (i = 0; i < n; i++)
-    {
-        res += (a[i * k + cut]) * (a[i * k + cut]);
-    }
-    return res;
-}
-
-void prodottoMatriceTrasp(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int cut2, int k, int n, int h)
-{
-    int m, i, j;
-    float sum = 0;
-    for (m = 0; m < rigaA; m++)
-    {
-        for (i = 0; i < colB; i++)
-        {
-            sum = 0;
-            for (j = 0; j < rigaB; j++)
-            {
-                sum += ds[j * k + m] * vect[j * h + cut2];
-                // printf("\nds = %f , u [cut %d] = %f , sum = %f ", ds[j * k + m], cut2, vect[j * h + cut2], sum);
-            }
-            result[m * h + cut] = sum;
-            // printf("V[cut %d] = %f \n",cut, result[m * h + cut]);
-        }
-    }
-}
-void prodottoMatrice(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int k, int n, int h)
-{
-    int m, i, j;
-    float sum = 0;
-    for (m = 0; m < rigaA; m++)
-    {
-        for (i = 0; i < colB; i++)
-        {
-            sum = 0;
-            for (j = 0; j < rigaB; j++)
-            {
-                sum += ds[m * k + j] * vect[j * h + cut];
-            }
-            result[m * h + cut] = sum;
-        }
-    }
-}
-
-float norma(float *v, int numRig, int numCol, int cut)
-{
-    float acc;
-    int i;
-    for (i = 0; i < numRig; i++)
-    {
-        acc += (v[i * numCol + cut]) * (v[i * numCol + cut]);
-    }
-    return sqrtf(acc);
-}
-
-void dividi(float *v, int numRig, int numCol, int cut, float norm)
-{
-
-    int i;
-    for (i = 0; i < numRig; i++)
-    {
-        v[i * numCol + cut] = v[i * numCol + cut] / norm;
-    }
-}
-
-void aggiornaDataset(MATRIX ds, int numRigDS, int numColDS, float *u, int rigaA, int colA, float *v, int rigaB, int colB, int h, int k, int cut)
-{
-
-    int m, i, j;
-    float sum = 0;
-    for (m = 0; m < rigaA; m++)
-    {
-        sum = 0;
-        for (i = 0; i < colB; i++)
-        {
-            sum += u[m * h + cut] * v[i * h + cut];
-        }
-        ds[m * k + i] -= sum;
-    }
-}
-
-/*
-*	PCA
-* 	=====================
-*/
-void pca(params *input)
-{
-    printf("\nINIZIO PCA\n");
-
-    centraMatrice(input->ds, input->n, input->k);
-    input->V = malloc(input->k * input->h * sizeof(float)); //dimensioni (k x h)
-    input->U = malloc(input->n * input->h * sizeof(float)); // dimensioni (n x h)
-    if (input->V == NULL || input->U == NULL)
-    {
-        printf("\nNo MEMORIA");
-        exit(1);
-    }
-    int i;
-    for (i = 0; i < input->n; i++)
-    {
-        input->U[i * input->h] = input->ds[i * input->k];
-    }
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     printf(" %f ", input->U[i * input->h]);
-    // }
-    float theta = 1 * exp(-8);
-    float norm, tempV, diff, t, t1;
-    int cut = 0;
-    for (i = 0; i < input->h; i++)
-    {
-        diff = 0, t = 0, t1 = 0;
-        int contatore = 0;
-        // printf("\ninizo iterazione %d ", i);
-
-        if (i == 0)
-            cut = 0;
-        else
-            cut = i - 1;
-        // printf(" 1 prova  cut= %d", cut);
-
-        prodottoMatriceTrasp(input->V, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, cut, input->k, input->n, input->h);
-
-        t = calcolaT(input->U, input->n, input->h, cut);
-        dividi(input->V, input->k, input->h, i, t);
-        norm = norma(input->V, input->k, input->h, i);
-        dividi(input->V, input->k, input->h, i, norm);
-
-        prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, input->V, input->k, 1, input->k, input->n, input->h);
-        tempV = calcolaT(input->V, input->k, input->h, i);
-        dividi(input->U, input->n, input->h, i, tempV);
-        t1 = calcolaT(input->U, input->n, input->h, i);
-        contatore++;
-
-        diff = t1 - t;
-        if (diff < 0)
-            diff = diff * -1;
-        // printf(" diff %f  ca %f", diff, theta * t1);
-
-        while (diff >= theta * t1)
-        {
-            prodottoMatriceTrasp(input->V, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, i, input->k, input->n, input->h);
-
-            t = calcolaT(input->U, input->n, input->h, i);
-            dividi(input->V, input->k, input->h, i, t);
-            norm = norma(input->V, input->k, input->h, i);
-            dividi(input->V, input->k, input->h, i, norm);
-
-            prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, input->V, input->k, 1, input->k, input->n, input->h);
-            tempV = calcolaT(input->V, input->k, input->h, i);
-            dividi(input->U, input->n, input->h, i, tempV);
-            t1 = calcolaT(input->U, input->n, input->h, i);
-            contatore++;
-            // printf("  cont %d", contatore);
-
-            diff = t1 - t;
-            if (diff < 0)
-                diff = diff * -1;
-        }
-        // printf("\n diff %f  ca %f", diff, theta * t1);
-        // printf("  fine iterazione %d ", i);
-
-        // if (i == 1)
-        // {
-        // for (int j = 0; j < 100; j++)
-        // {
-        //     printf("U: %f ", input->U[j * input->h + i]);
-        //     printf("V: %f ", input->V[j * input->h + i]);
-        // }
-        // }
-        aggiornaDataset(input->ds, input->n, input->k, input->U, input->n, 1, input->V, 1, input->k, input->h, input->k, i);
-    }
-    printf("\nFINE PCA");
-
-    // for (int j = 0; j < input->h; j++)
-    // {
-    //     for (int i = 0; i < 100; i++)
-    //     {
-    //         printf("U %f ", input->U[i * input->h + j]);
-    //         printf("V %f ", input->V[i * input->h + j]);
-    //     }
-    // }
-    free_block(input->ds);
-    input->ds = input->U;
-
-    float *newQS = calcoloQ(input->qs, input->V, input->nq, input->k, input->h, input->n);
-    input->k = input->h;
-
-    free_block(input->qs);
-    input->qs = newQS;
-
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     printf(" %f ", input->ds[i*input->]);
-    // }
-}
-float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h, int n)
-{
-    centraMatrice(q, nq, k);
-    float *q1 = malloc(nq * h * sizeof(float));
-    prodottoMatrice(q1, nq, 0, q, nq, k, V, k, h, k, n, h);
-    return q1;
-}
-
-/*
-*	K-d-Tree
-* 	======================
-*/
-void kdtree(params *input)
-{
-
-    printf("\nInizio kdtree");
-    // printf("\ndataset size%d, dataset k%d\n", input->n, input->k);
-    int *indexSorted = (int *)get_block(sizeof(int), input->n); //vettore che conterra indice riga dei punti ordinati
-
-    if (indexSorted == NULL)
-    {
-        printf("\nNO MEMORIA\n");
-        exit(-2);
-    }
-    int i;
-    for (i = 0; i < input->n; i++)
-    {
-        indexSorted[i] = i;
-    }
-    // si può usare memset
-    // memset(indexSorted,0,input->n*sizeof(int));
-
-    // if (input->h = 0)
-    // {
-    printf(" k %d", input->k);
-    input->region = findRegion(input->ds, input->n, input->k);
-    input->kdtree = buildTreeRoot(input->ds, indexSorted, 0, input->n, input->k);
-    // }
-
-    // else
-    // {
-
-    //     free_block(input->ds);
-
-    //     input->region = findRegion(input->U, input->n, input->h);
-    //     input->kdtree = buildTreeRoot(input->U, indexSorted, 0, input->n, input->h);
-    // }
-
-    // // printTree(input->kdtree);
-
-    //bisogna liberare la memoria
-
-    free_block(indexSorted);
-    printf("\nfine KDTREE");
-}
-
-void range_query(params *input)
-{
-    printf("\n inizio QUERY");
-
-    float *point = (float *)get_block(sizeof(float), input->k); //punto che conterrà il punto più vicino alla region per il confronto
-    // float point [input->k];
-    input->QA = (int *)get_block(sizeof(int), input->n * input->nq);
-    if (point == NULL || input->QA == NULL)
-    {
-        printf("\nNO MEMORIA");
-        exit(-2);
-    }
-    int i;
-    for (i = 0; i < input->nq; i++)
-    {
-        rangeQueryRoot(input->ds, input->kdtree, input->n, input->k, input->qs, i, input->r, 0, input->region, point, input->QA);
-        input->QA[i * input->n + indexList] = -1;
-        input->nQA += indexList + 1;
-        indexList = 0;
-    }
-
-    printf("\nQuery Answer:\n");
-    int flag, j;
-    for (i = 0; i < input->nq; i++)
-    {
-        for (j = 0; j < input->n; j++)
-        {
-            if (input->QA[i * input->n + j] == -1)
-            {
-                // printf("]");
-                break;
-            }
-            if (flag == 0)
-            {
-                printf("\nid_q %d: [", i);
-                flag = 1;
-            }
-            printf("%d, ", input->QA[i * input->n + j]);
-        }
-        flag = 0;
-    }
-    printf("\n");
-
-    free_block(point);
-}
+// void swap(int *a, int *b)
+// {
+//     int t = *a;
+//     *a = *b;
+//     *b = t;
+// }
+
+// int partition(MATRIX dataset, int *indexSorted, int low, int high, int k, int cut)
+// {
+//     float pivot = dataset[indexSorted[high - 1] * k + cut];
+//     int i = (low - 1);
+//     int j;
+//     for (j = low; j < high - 1; j++)
+//     {
+//         if (dataset[indexSorted[j] * k + cut] < pivot)
+//         {
+//             i++;
+//             swap(&indexSorted[i], &indexSorted[j]);
+//         }
+//     }
+
+//     swap(&indexSorted[i + 1], &indexSorted[high - 1]);
+//     return (i + 1);
+// }
+
+// void quicksort(MATRIX dataset, int *indexSorted, int cut, int k, int low, int high)
+// {
+//     if (low < high)
+//     {
+//         int indexPivot = -1;
+
+//         indexPivot = partition(dataset, indexSorted, low, high, k, cut);
+
+//         quicksort(dataset, indexSorted, cut, k, low, indexPivot);
+//         quicksort(dataset, indexSorted, cut, k, indexPivot + 1, high);
+//     }
+// }
+
+// int findMedian(MATRIX dataset, int *indexSorted, int start, int indexMedian, int k, int cut)
+// {
+//     float median = dataset[indexSorted[indexMedian] * k + cut];
+//     int i;
+//     for (i = indexMedian - 1; i >= start; i--)
+//     {
+//         if (dataset[indexSorted[i] * k + cut] < median)
+//         {
+//             return i + 1;
+//         }
+//     }
+//     return indexMedian;
+// }
+
+// float euclideanDistance(float *point, MATRIX q, int indexQ, int k)
+// {
+
+//     float sum = 0;
+//     int i;
+//     for (i = 0; i < k; i++)
+//     {
+//         sum += (point[i] - q[indexQ * k + i]) * (point[i] - q[indexQ * k + i]);
+//     }
+//     return sqrtf(sum);
+// }
+
+// float euclideanDistanceDataset(MATRIX ds, int indexMedian, MATRIX q, int indexQ, int k)
+// {
+
+//     float sum = 0;
+//     int i;
+//     for (i = 0; i < k; i++)
+//     {
+//         sum += (ds[indexMedian * k + i] - q[indexQ * k + i]) * (ds[indexMedian * k + i] - q[indexQ * k + i]);
+//     }
+//     return sqrtf(sum);
+// }
+
+// //distanza tra il punto q del querySet e l'intera regione indicizzata
+// float distanceRoot(float *region, MATRIX q, int indexQ, int k, float *point)
+// {
+//     int j;
+
+//     for (j = 0; j < k; j++)
+//     {
+//         if (q[indexQ * k + j] <= region[2 * j])
+//             point[j] = region[2 * j];
+//         else if (q[indexQ * k + j] >= region[(2 * j) + 1])
+//             point[j] = region[(2 * j) + 1];
+//         else
+//             point[j] = q[indexQ * k + j];
+//     }
+
+//     float dist = euclideanDistance(point, q, indexQ, k);
+//     // printf(" \nroot dist: %f ", dist);
+//     return dist;
+// }
+
+// float distanceChild(KDTREE node, MATRIX q, int indexQ, int k, float *point, int cut)
+// {
+//     if (q[indexQ * k + cut] <= node->h_min)
+//         point[cut] = q[indexQ * k + cut];
+//     else if (q[indexQ * k + cut] >= node->h_max)
+//         point[cut] = q[indexQ * k + cut];
+//     else
+//         point[cut] = q[indexQ * k + cut];
+
+//     // printf("\npoint ");
+
+//     float dist = euclideanDistance(point, q, indexQ, k);
+//     // for (int j = 0; j < k; j++)
+//     // {
+//     //     printf(" %f ", point[j]);
+//     // }
+//     // printf(" --- dist[ ]: %f ", dist);
+
+//     return dist;
+// }
+
+// /*
+// *   buildTree serve per costruire tutti i nodi del kdtree
+// *   il valore end deve essere escluso indici vanno da [start, end) quindi end è escluso l'ultimo elemento si trova a end-1
+// */
+// struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, int end, int numEle, int k, int type)
+// {
+//     if (numEle == 0)
+//         return NULL;
+
+//     int cut = liv % k; //variabile di cut per indice colonna da usare
+//     struct kdtree_node *node = (struct kdtree_node *)get_block(sizeof(struct kdtree_node), 1);
+//     node->h_min = ds[indexSorted[start] * k + (cut - 1)];   //valore di coordinata più piccola per il padre
+//     node->h_max = ds[indexSorted[end - 1] * k + (cut - 1)]; //valore di coordinata più piccola per il padre
+//     node->numPoint = numEle;
+//     quicksort(ds, indexSorted, cut, k, start, end);
+
+//     int indexMedian = findMedian(ds, indexSorted, start, start + ((end - 1 - start) / 2), k, cut);
+
+//     node->medianCoordinate = ds[indexSorted[indexMedian] * k + cut]; //valore di coordinata del punto mediano
+//     node->indexMedianPoint = indexSorted[indexMedian];               //indice del punto mediano nel dataset
+
+//     int numEleSx = indexMedian - start;
+//     int numEleDx = end - indexMedian - 1;
+
+//     if (numEleSx == 0 && numEleDx == 0)
+//     {
+//         node->left = NULL;
+//         node->right = NULL;
+//         return node;
+//     }
+//     else if (numEleSx == 0)
+//     {
+//         node->left = NULL;
+//         node->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1);
+//         return node;
+//     }
+//     else if (numEleDx == 0)
+//     {
+//         node->right = NULL;
+//         node->left = buildTree(ds, indexSorted, liv + 1, start, indexMedian, numEleSx, k, 0);
+//         return node;
+//     }
+//     else
+//     {
+//         node->left = buildTree(ds, indexSorted, liv + 1, start, indexMedian, numEleSx, k, 0);
+//         node->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1);
+//         return node;
+//     }
+// }
+
+// /*
+// *   buildTreeRoot server per costruire solo la radice del hdtree
+// *   end è il numero di elementi quindi va fatto end-1 per rpendere l'ultimo indice
+// */
+// struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end, int k)
+// {
+//     if (end <= 0)
+//     {
+//         printf("\nDATASET NULLO\n");
+//         return NULL;
+//     }
+//     int cut = liv % k; //variabile di cut per indice colonna da usare
+
+//     quicksort(ds, indexSorted, cut, k, 0, end);
+
+//     int indexMedian = findMedian(ds, indexSorted, 0, (end - 1) / 2, k, cut);
+
+//     struct kdtree_node *root = (struct kdtree_node *)get_block(sizeof(struct kdtree_node), 1);
+
+//     root->medianCoordinate = ds[indexSorted[indexMedian] * k + cut]; //valore di coordinata del punto mediano
+//     root->indexMedianPoint = indexSorted[indexMedian];               //indice del punto mediano nel dataset
+//     root->h_min = ds[indexSorted[0] * k + cut];                      //valore di coordinata più piccola
+//     root->h_max = ds[indexSorted[end - 1] * k + cut];                //valore di coordinata più grande
+//     root->numPoint = end;
+
+//     int numEleSx = indexMedian;
+//     int numEleDx = end - indexMedian - 1;
+
+//     root->left = buildTree(ds, indexSorted, liv + 1, 0, indexMedian, numEleSx, k, 0);
+//     root->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1);
+
+//     return root;
+// }
+
+// float *findRegion(MATRIX ds, int n, int k)
+// {
+//     float *region = (float *)get_block(sizeof(float), k * 2);
+//     float h_min, h_max;
+//     int j, i;
+//     for (j = 0; j < k; j++)
+//     {
+//         h_min = ds[j];
+//         h_max = ds[j];
+//         for (i = 0; i < n; i++)
+//         {
+//             if (h_max < ds[i * k + j])
+//                 h_max = ds[i * k + j];
+//             if (h_min > ds[i * k + j])
+//                 h_min = ds[i * k + j];
+//         }
+//         region[2 * j] = h_min;
+//         region[(2 * j) + 1] = h_max;
+//     }
+//     return region;
+// }
+
+// int indexList = 0;
+
+// /*  Questo metodo effettua la rangeQuery sui sottoalberi figli di root, la distanza della region viene effettuata solo per le coordinate di cut del nodo padre
+// *   poichè le restanti coordinate non cambiano e alla fine si eseguono le chiamate ricorsive sui figli finchè non si arriva a un nodo foglia
+// */
+// int rangeQueryChild(MATRIX ds, KDTREE node, int n, int k, MATRIX q, int indexQ, int r, int liv, float *point, int *list)
+// {
+//     int cut = (liv - 1) % k; //il cut del nodo padre
+
+//     if (distanceChild(node, q, indexQ, k, point, cut) > r)
+//     {
+//         printf("stop  ");
+//         return -1;
+//     }
+
+//     if (euclideanDistanceDataset(ds, node->indexMedianPoint, q, indexQ, k) <= r)
+//     {
+//         list[indexQ * n + indexList] = node->indexMedianPoint;
+
+//         indexList++;
+//     }
+
+//     if (node->left != NULL)
+//     {
+//         rangeQueryChild(ds, node->left, n, k, q, indexQ, r, liv + 1, point, list);
+//         // return 1;
+//     }
+//     if (node->right != NULL)
+//     {
+//         rangeQueryChild(ds, node->right, n, k, q, indexQ, r, liv + 1, point, list);
+//         // return 1;
+//     }
+//     return 1;
+// }
+
+// /*  Questo metodo server per effettuare il controllo tra il punto di query e la regione indicizzata dall'intero dataset
+// *   viene usato region che contiene il vettore delle k coppia di (h_min, h_max)
+// *   alla fine il metodo richiama la ricerca sui suoi figli
+// */
+// int rangeQueryRoot(MATRIX ds, KDTREE root, int n, int k, MATRIX q, int indexQ, int r, int liv, float *region, float *point, int *list)
+// {
+
+//     if (distanceRoot(region, q, indexQ, k, point) > r)
+//     {
+//         return -1;
+//     }
+
+//     if (euclideanDistanceDataset(ds, root->indexMedianPoint, q, indexQ, k) <= r)
+//     {
+//         list[indexQ * n + indexList] = root->indexMedianPoint;
+//         indexList++;
+//     }
+
+//     if (root->left != NULL)
+//     {
+//         rangeQueryChild(ds, root->left, n, k, q, indexQ, r, liv + 1, point, list);
+//     }
+//     if (root->right != NULL)
+//     {
+//         rangeQueryChild(ds, root->right, n, k, q, indexQ, r, liv + 1, point, list);
+//     }
+//     return 1;
+// }
+
+// void centraMatrice(MATRIX ds, int n, int k)
+// {
+//     int i, j;
+//     float acc, mean;
+//     for (j = 0; j < k; j++)
+//     {
+//         acc = 0;
+//         for (i = 0; i < n; i++)
+//         {
+//             acc += ds[i * k + j];
+//         }
+//         mean = acc / n;
+//         i = 0;
+//         for (i = 0; i < n; i++)
+//         {
+//             ds[i * k + j] = ds[i * k + j] - mean;
+//         }
+//     }
+// }
+
+// float calcolaT(float *a, int n, int k, int cut)
+// {
+//     int i;
+//     float res = 0;
+//     for (i = 0; i < n; i++)
+//     {
+//         res += (a[i * k + cut]) * (a[i * k + cut]);
+//     }
+//     return res;
+// }
+
+// void prodottoMatriceTrasp(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int cut2, int k, int n, int h)
+// {
+//     int m, i, j;
+//     float sum = 0;
+//     for (m = 0; m < rigaA; m++)
+//     {
+//         for (i = 0; i < colB; i++)
+//         {
+//             sum = 0;
+//             for (j = 0; j < rigaB; j++)
+//             {
+//                 sum += ds[j * k + m] * vect[j * h + cut2];
+//                 // printf("\nds = %f , u [cut %d] = %f , sum = %f ", ds[j * k + m], cut2, vect[j * h + cut2], sum);
+//             }
+//             result[m * h + cut] = sum;
+//             // printf("V[cut %d] = %f \n",cut, result[m * h + cut]);
+//         }
+//     }
+// }
+// void prodottoMatrice(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int k, int n, int h)
+// {
+//     int m, i, j;
+//     float sum = 0;
+//     for (m = 0; m < rigaA; m++)
+//     {
+//         for (i = 0; i < colB; i++)
+//         {
+//             sum = 0;
+//             for (j = 0; j < rigaB; j++)
+//             {
+//                 sum += ds[m * k + j] * vect[j * h + cut];
+//             }
+//             result[m * h + cut] = sum;
+//         }
+//     }
+// }
+
+// float norma(float *v, int numRig, int numCol, int cut)
+// {
+//     float acc;
+//     int i;
+//     for (i = 0; i < numRig; i++)
+//     {
+//         acc += (v[i * numCol + cut]) * (v[i * numCol + cut]);
+//     }
+//     return sqrtf(acc);
+// }
+
+// void dividi(float *v, int numRig, int numCol, int cut, float norm)
+// {
+
+//     int i;
+//     for (i = 0; i < numRig; i++)
+//     {
+//         v[i * numCol + cut] = v[i * numCol + cut] / norm;
+//     }
+// }
+
+// void aggiornaDataset(MATRIX ds, int numRigDS, int numColDS, float *u, int rigaA, int colA, float *v, int rigaB, int colB, int h, int k, int cut)
+// {
+
+//     int m, i, j;
+//     float sum = 0;
+//     for (m = 0; m < rigaA; m++)
+//     {
+//         sum = 0;
+//         for (i = 0; i < colB; i++)
+//         {
+//             sum += u[m * h + cut] * v[i * h + cut];
+//         }
+//         ds[m * k + i] -= sum;
+//     }
+// }
+
+// /*
+// *	PCA
+// * 	=====================
+// */
+// void pca(params *input)
+// {
+//     printf("\nINIZIO PCA\n");
+
+//     centraMatrice(input->ds, input->n, input->k);
+//     input->V = malloc(input->k * input->h * sizeof(float)); //dimensioni (k x h)
+//     input->U = malloc(input->n * input->h * sizeof(float)); // dimensioni (n x h)
+//     if (input->V == NULL || input->U == NULL)
+//     {
+//         printf("\nNo MEMORIA");
+//         exit(1);
+//     }
+//     int i;
+//     for (i = 0; i < input->n; i++)
+//     {
+//         input->U[i * input->h] = input->ds[i * input->k];
+//     }
+//     // for (int i = 0; i < 10; i++)
+//     // {
+//     //     printf(" %f ", input->U[i * input->h]);
+//     // }
+//     float theta = 1 * exp(-8);
+//     float norm, tempV, diff, t, t1;
+//     int cut = 0;
+//     for (i = 0; i < input->h; i++)
+//     {
+//         diff = 0, t = 0, t1 = 0;
+//         int contatore = 0;
+//         // printf("\ninizo iterazione %d ", i);
+
+//         if (i == 0)
+//             cut = 0;
+//         else
+//             cut = i - 1;
+//         // printf(" 1 prova  cut= %d", cut);
+
+//         prodottoMatriceTrasp(input->V, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, cut, input->k, input->n, input->h);
+
+//         t = calcolaT(input->U, input->n, input->h, cut);
+//         dividi(input->V, input->k, input->h, i, t);
+//         norm = norma(input->V, input->k, input->h, i);
+//         dividi(input->V, input->k, input->h, i, norm);
+
+//         prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, input->V, input->k, 1, input->k, input->n, input->h);
+//         tempV = calcolaT(input->V, input->k, input->h, i);
+//         dividi(input->U, input->n, input->h, i, tempV);
+//         t1 = calcolaT(input->U, input->n, input->h, i);
+//         contatore++;
+
+//         diff = t1 - t;
+//         if (diff < 0)
+//             diff = diff * -1;
+//         // printf(" diff %f  ca %f", diff, theta * t1);
+
+//         while (diff >= theta * t1)
+//         {
+//             prodottoMatriceTrasp(input->V, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, i, input->k, input->n, input->h);
+
+//             t = calcolaT(input->U, input->n, input->h, i);
+//             dividi(input->V, input->k, input->h, i, t);
+//             norm = norma(input->V, input->k, input->h, i);
+//             dividi(input->V, input->k, input->h, i, norm);
+
+//             prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, input->V, input->k, 1, input->k, input->n, input->h);
+//             tempV = calcolaT(input->V, input->k, input->h, i);
+//             dividi(input->U, input->n, input->h, i, tempV);
+//             t1 = calcolaT(input->U, input->n, input->h, i);
+//             contatore++;
+//             // printf("  cont %d", contatore);
+
+//             diff = t1 - t;
+//             if (diff < 0)
+//                 diff = diff * -1;
+//         }
+//         // printf("\n diff %f  ca %f", diff, theta * t1);
+//         // printf("  fine iterazione %d ", i);
+
+//         // if (i == 1)
+//         // {
+//         // for (int j = 0; j < 100; j++)
+//         // {
+//         //     printf("U: %f ", input->U[j * input->h + i]);
+//         //     printf("V: %f ", input->V[j * input->h + i]);
+//         // }
+//         // }
+//         aggiornaDataset(input->ds, input->n, input->k, input->U, input->n, 1, input->V, 1, input->k, input->h, input->k, i);
+//     }
+//     printf("\nFINE PCA");
+
+//     // for (int j = 0; j < input->h; j++)
+//     // {
+//     //     for (int i = 0; i < 100; i++)
+//     //     {
+//     //         printf("U %f ", input->U[i * input->h + j]);
+//     //         printf("V %f ", input->V[i * input->h + j]);
+//     //     }
+//     // }
+//     free_block(input->ds);
+//     input->ds = input->U;
+
+//     float *newQS = calcoloQ(input->qs, input->V, input->nq, input->k, input->h, input->n);
+//     input->k = input->h;
+
+//     free_block(input->qs);
+//     input->qs = newQS;
+
+//     // for (int i = 0; i < 10; i++)
+//     // {
+//     //     printf(" %f ", input->ds[i*input->]);
+//     // }
+// }
+// float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h, int n)
+// {
+//     centraMatrice(q, nq, k);
+//     float *q1 = malloc(nq * h * sizeof(float));
+//     prodottoMatrice(q1, nq, 0, q, nq, k, V, k, h, k, n, h);
+//     return q1;
+// }
+
+// /*
+// *	K-d-Tree
+// * 	======================
+// */
+// void kdtree(params *input)
+// {
+
+//     printf("\nInizio kdtree");
+//     // printf("\ndataset size%d, dataset k%d\n", input->n, input->k);
+//     int *indexSorted = (int *)get_block(sizeof(int), input->n); //vettore che conterra indice riga dei punti ordinati
+
+//     if (indexSorted == NULL)
+//     {
+//         printf("\nNO MEMORIA\n");
+//         exit(-2);
+//     }
+//     int i;
+//     for (i = 0; i < input->n; i++)
+//     {
+//         indexSorted[i] = i;
+//     }
+//     // si può usare memset
+//     // memset(indexSorted,0,input->n*sizeof(int));
+
+//     // if (input->h = 0)
+//     // {
+//     printf(" k %d", input->k);
+//     input->region = findRegion(input->ds, input->n, input->k);
+//     input->kdtree = buildTreeRoot(input->ds, indexSorted, 0, input->n, input->k);
+//     // }
+
+//     // else
+//     // {
+
+//     //     free_block(input->ds);
+
+//     //     input->region = findRegion(input->U, input->n, input->h);
+//     //     input->kdtree = buildTreeRoot(input->U, indexSorted, 0, input->n, input->h);
+//     // }
+
+//     // // printTree(input->kdtree);
+
+//     //bisogna liberare la memoria
+
+//     free_block(indexSorted);
+//     printf("\nfine KDTREE");
+// }
+
+// void range_query(params *input)
+// {
+//     printf("\n inizio QUERY");
+
+//     float *point = (float *)get_block(sizeof(float), input->k); //punto che conterrà il punto più vicino alla region per il confronto
+//     // float point [input->k];
+//     input->QA = (int *)get_block(sizeof(int), input->n * input->nq);
+//     if (point == NULL || input->QA == NULL)
+//     {
+//         printf("\nNO MEMORIA");
+//         exit(-2);
+//     }
+//     int i;
+//     for (i = 0; i < input->nq; i++)
+//     {
+//         rangeQueryRoot(input->ds, input->kdtree, input->n, input->k, input->qs, i, input->r, 0, input->region, point, input->QA);
+//         input->QA[i * input->n + indexList] = -1;
+//         input->nQA += indexList + 1;
+//         indexList = 0;
+//     }
+
+//     printf("\nQuery Answer:\n");
+//     int flag, j;
+//     for (i = 0; i < input->nq; i++)
+//     {
+//         for (j = 0; j < input->n; j++)
+//         {
+//             if (input->QA[i * input->n + j] == -1)
+//             {
+//                 // printf("]");
+//                 break;
+//             }
+//             if (flag == 0)
+//             {
+//                 printf("\nid_q %d: [", i);
+//                 flag = 1;
+//             }
+//             printf("%d, ", input->QA[i * input->n + j]);
+//         }
+//         flag = 0;
+//     }
+//     printf("\n");
+
+//     free_block(point);
+// }
 
 int main(int argc, char const *argv[])
 {
