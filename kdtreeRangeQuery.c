@@ -17,7 +17,7 @@ struct kdtree_node *buildTreeRoot(MATRIX, int *, int, int, int);
 struct kdtree_node *buildTree(MATRIX, int *, int, int, int, int, int, int, float *);
 float *findRegion(MATRIX, int, int);
 float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k);
-int *rangeQuery(MATRIX, struct kdtree_node *, MATRIX, int, float, int, int, int *, float *, int *);
+int rangeQuery(MATRIX, struct kdtree_node *, MATRIX, int, float, int, int, int *, float *, int *);
 void centraMatrice(MATRIX, int, int);
 float calcolaT(float *, int, int, int);
 void prodottoMatrice(float *, int, int, MATRIX, int, int, float *, int, int, int, int, int);
@@ -108,7 +108,7 @@ MATRIX load_data(char *filename, int *n, int *k)
     return data;
 }
 
-void read_ris(char *filename, int *n)
+MATRIX read_ris(char *filename)
 {
     FILE *fp;
     int rows, cols, status, i;
@@ -120,16 +120,18 @@ void read_ris(char *filename, int *n)
         printf("'%s': bad data file name!\n", filename);
         exit(0);
     }
+
     status = fread(&cols, sizeof(int), 1, fp);
     status = fread(&rows, sizeof(int), 1, fp);
-    MATRIX data = (MATRIX)get_block(sizeof(int), rows * cols);
+
+    int *data = (int *)get_block(sizeof(int), rows * cols);
     status = fread(data, sizeof(int), rows * cols, fp);
     fclose(fp);
-    *n = rows;
     for (int i = 0; i < (rows * cols) - 1; i = i + 2)
     {
-        printf("[%f , %f]\n", data[i], data[i + 1]);
+        printf("[%i,%i]\n", data[i], data[i + 1]);
     }
+    free_block(data);
 }
 
 /*
@@ -360,6 +362,21 @@ float *findRegion(MATRIX ds, int n, int k)
 */
 extern float sommatoria(MATRIX ds, int n, int k, int col);
 
+void moltiplica(MATRIX q, MATRIX V, float *c, int nq, int k, int h)
+{
+    int i, j, z;
+    for (i = 0; i < nq; i++)
+    {
+        for (j = 0; j < h; j++)
+        {
+            for (z = 0; z < k; z++)
+            {
+                c[i * h + j] += q[i * k + z] * V[z * h + j];
+            }
+        }
+    }
+}
+
 void centraMatrice(MATRIX ds, int n, int k)
 {
     int i, j;
@@ -469,7 +486,7 @@ float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h, int n)
 {
     centraMatrice(q, nq, k);
     float *q1 = get_block(sizeof(float), h * nq);
-    prodottoMatrice(q1, nq, 0, q, nq, k, V, k, h, k, n, h);
+    moltiplica(q, V, q1, nq, k, h);
     return q1;
 }
 
@@ -643,12 +660,12 @@ float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
     return sqrtf(somma);
 }
 
-int *rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float r, int k, int n, int *list, float *point, int *nQA)
+int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float r, int k, int n, int *list, float *point, int *nQA)
 {
     if (tree == NULL || distance(tree->region, qs, id_qs, k, point) > r)
     {
         // printf("stop  ");
-        return list;
+        return 0;
     }
 
     if (euclidean_distance(qs, id_qs, ds, tree->indexMedianPoint, k) <= r)
@@ -666,7 +683,7 @@ int *rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float
         rangeQuery(ds, tree->right, qs, id_qs, r, k, n, list, point, nQA);
     }
 
-    return list;
+    return 0;
 }
 
 ////FINE METODI RANGE QUERY
@@ -689,7 +706,6 @@ void range_query(params *input)
         input->QA[i * input->n + indexList] = -1;
         indexList = 0;
     }
-    printf(" \nnum vicini %d", input->nQA);
     free_block(point);
 }
 
@@ -947,7 +963,7 @@ int main(int argc, char const *argv[])
 
         sprintf(fname, "%s.qa", input->filename);
         save_data_ris(fname, input->QA, input->nQA, 2, input->nq, input->n);
-        read_ris(fname, &input->nQA);
+        read_ris(fname);
     }
 
     if (!input->silent)

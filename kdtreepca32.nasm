@@ -113,48 +113,30 @@ sommatoria:
         ; [EAX+12] contiene il numero della colonna di iterazione (cut)
         mov     eax,[ebp+data]      ;eax= primo valore dataseet
         mov 	esi, 0              ; esi = 0
-        mov 	ebx, [ebp+n]        ; in ebx=n
+        ; mov 	ebx, [ebp+n]        ; in ebx=n
         mov 	edx, [ebp+k]        ; in edx ci sarà il valore k
         imul	edx, 4              ;edx = 4*k
         mov		edi, [ebp+col]      ; in edi ci sarà la varibile di cut
         imul    edi, 4              ;edi = 4*cut
 
+        mov     ebx,4           ;cont for4
+    .for4:
         mov     ecx, 1
-        imul    ecx,edx         ;ecx= i*4*k
-        imul    ecx, esi        ;ecx= i*4*k+4*cut
-        add     ecx, edi
-        movss   xmm0,[eax+ecx]  ;[base + i*4*k + 4*cut]
-        shufps	xmm0, xmm0, 147
-        movups  xmm1,xmm0
-
-        add     esi,1           ;i++
-        mov     ecx,1           ;ecx=1
         imul    ecx, edx        ;ecx= i
         imul    ecx, esi        ;ecx= i*4*k
         add     ecx, edi        ;ecx= i*4*k+4*cut
-
-        movss   xmm0,[eax+ecx]  ;leggiamo secondo elemento
+        movss   xmm0,[eax+ecx]  ;[base + i*4*k + 4*cut]
+        ; shufps	xmm0, xmm0, 147 ;
         xorps   xmm1, xmm0
+        shufps	xmm1, xmm1, 147
+        add     esi,1           ;i++
+        sub     ebx,1           ; cont--
 
-
-
-        ; shufps	xmm0, xmm0, 147
+        cmp     ebx, 0
+        jnz     .for4
         
-
-        ; add 	ebx,
-        ; mul    ebx, edx
-        ; movss	xmm0, [eax + ebx+ edi] ; secondo valore del dataset
-        ; shufps	xmm0, xmm0, 10010011
-
-
-
-        ; sub     eax,4
+        
         movups 	[eax],	xmm1
-        ; printi  dword[eax]
-        ; prints msg
-        ; printi dword[eax+12] ; a 12 byte dall'inizio della struct si trova n
-        ; prints nl
-        ; printi dword[EAX+16]	; a 4 byte da n si trova k
 
 
         ; ------------------------------------------------------------
