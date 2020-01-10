@@ -14,10 +14,10 @@ int main(int argc, char const *argv[])
     int n = 1;
     int k = 4;
     int h = 2;
-    int cut = 0;
-    float *ds = _mm_malloc(sizeof(float) * n * k, 16);
-    float *V = _mm_malloc(sizeof(float) * k * h, 16);
-    float *U = _mm_malloc(sizeof(float) * n * h, 16);
+    int cut = 1;
+    float *ds = malloc(sizeof(float) * n * k);
+    float *V = malloc(sizeof(float) * k * h);
+    float *U = malloc(sizeof(float) * n * h);
 
     printf("\nds: [");
     for (int i = 0; i < n * k; i++)

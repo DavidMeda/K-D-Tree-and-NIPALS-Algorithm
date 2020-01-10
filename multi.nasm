@@ -79,7 +79,10 @@ multi:
 
 
         ; devo riempire il registro xmm2 con 4 valori non consecutivi di V
-        mov     edi, 0          ; edi è il contatore fino a 4
+        mov     edi, 4          ; edi è il contatore fino a 4
+        shf:
+            shufps	xmm2, xmm2, 93h ;shift di una posizione a sinistra
+            jmp     loop_4
 
         loop_4:
             mov     eax, [ebp+V]    ; eax=V
@@ -91,14 +94,16 @@ multi:
             movss   xmm1, [ebx+eax*4]; [V + 4*j*h + 4*cut] 
 
             xorps   xmm2, xmm1      ;sposto il valore in xmm2
-            shufps	xmm2, xmm2, 147 ;shift di una posizione 
 
-            inc     edi             ;cont++
+            dec     edi             ;cont++
             inc     esi             ; j++ (0 < j < k-4)
 
-            cmp     edi, 4          ;devo fare 4 iterazioni
-            jne     loop_4       
+            cmp     edi, 0          ;devo fare 4 iterazioni
+            jg     shf       
+            jne     loop_4
         
+            
+        dec     esi                 ; decremento esi che è j
         mulps   xmm0, xmm2          ;xmm0 moltiplico i 4 valori di V con quelli di ds
         addps   xmm3, xmm0          ;xmm3 registro per somma parziale dei valori moltiplicati
 
