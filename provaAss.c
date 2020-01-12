@@ -11,8 +11,8 @@ extern void multi3(float *ds, float *V, float *U, int cut, int i, int k, int h);
 int main(int argc, char const *argv[])
 {
 
-    int n = 2;
-    int k = 9;
+    int n = 1;
+    int k = 8;
     int h = 2;
     int cut = 0;
     float *ds = _mm_malloc(sizeof(float) * n * k,16);
@@ -42,7 +42,7 @@ int main(int argc, char const *argv[])
 
     printf(" ] ");
 
-    multi3(ds, V, U, cut, 1, k, h);
+    multi3(ds, V, U, cut, 0, k, h);
 
     for (int i = 0; i < n * h; i++)
     {
