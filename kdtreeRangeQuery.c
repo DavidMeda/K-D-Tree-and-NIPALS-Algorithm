@@ -401,6 +401,17 @@ void centraMatrice(MATRIX ds, int n, int k)
     }
 }
 
+float calcolaTV(float *a, int n, int k, int cut)
+{
+    int i;
+    float res = 0;
+    for (i = 0; i < n; i++)
+    {
+        res += (a[i]) * (a[i]);
+    }
+    return res;
+}
+
 float calcolaT(float *a, int n, int k, int cut)
 {
     int i;
@@ -425,11 +436,12 @@ void prodottoMatriceTrasp(float *result, int rigaRes, int cut, MATRIX ds, int ri
             {
                 sum += ds[j * k + m] * vect[j * h + cut2];
             }
-            result[m * h + cut] = sum;
+            result[m] = sum;
         }
     }
 }
 extern void multi3(float *ds, float *V, float *U, int cut, int i, int k, int h);
+extern void multi2(float *ds, float *V, float *U, int cut, int i, int k, int h);
 
 void prodottoMatrice(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int k, int n, int h)
 {
@@ -437,7 +449,7 @@ void prodottoMatrice(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, 
     float sum = 0;
     for (m = 0; m < rigaA; m++)
     {
-        multi3(ds, vect, result, cut, m, k, h);
+        // multi3(ds, vect, result, cut, m, k, h);
         // for (i = 0; i < colB; i++)
         // {
         //     sum = 0;
@@ -456,9 +468,19 @@ float norma(float *v, int numRig, int numCol, int cut)
     int i;
     for (i = 0; i < numRig; i++)
     {
-        acc += (v[i * numCol + cut]) * (v[i * numCol + cut]);
+        acc += (v[i]) * (v[i]);
     }
     return sqrtf(acc);
+}
+
+void dividiV(float *v, int numRig, int numCol, int cut, float norm)
+{
+
+    int i;
+    for (i = 0; i < numRig; i++)
+    {
+        v[i] = v[i] / norm;
+    }
 }
 
 void dividi(float *v, int numRig, int numCol, int cut, float norm)
@@ -504,7 +526,10 @@ void pca(params *input)
     centraMatrice(input->ds, input->n, input->k);
     input->V = get_block(sizeof(float), input->k * input->h); //dimensioni (k x h)
     input->U = get_block(sizeof(float), input->n * input->h); // dimensioni (n x h)
-    if (input->V == NULL || input->U == NULL)
+    float *u = get_block(sizeof(float), input->n);
+    float *v = get_block(sizeof(float), input->k);
+
+    if (input->V == NULL || input->U == NULL || u == NULL || v == NULL)
     {
         printf("\nNo MEMORIA");
         exit(1);
@@ -513,7 +538,7 @@ void pca(params *input)
 
     for (i = 0; i < input->n; i++)
     {
-        input->U[i * input->h] = input->ds[i * input->k];
+        input->U[i] = input->ds[i * input->k];
     }
     // for (int i = 0; i < 10; i++)
     // {
@@ -534,15 +559,15 @@ void pca(params *input)
             cut = i - 1;
         // printf(" 1 prova  cut= %d", cut);
 
-        prodottoMatriceTrasp(input->V, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, cut, input->k, input->n, input->h);
+        prodottoMatriceTrasp(v, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, cut, input->k, input->n, input->h);
 
         t = calcolaT(input->U, input->n, input->h, cut);
-        dividi(input->V, input->k, input->h, i, t);
-        norm = norma(input->V, input->k, input->h, i);
-        dividi(input->V, input->k, input->h, i, norm);
+        dividiV(v, input->k, input->h, i, t);
+        norm = norma(v, input->k, input->h, i);
+        dividi(v, input->k, input->h, i, norm);
 
-        prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, input->V, input->k, 1, input->k, input->n, input->h);
-        tempV = calcolaT(input->V, input->k, input->h, i);
+        prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, v, input->k, 1, input->k, input->n, input->h);
+        tempV = calcolaTV(v, input->k, input->h, i);
         dividi(input->U, input->n, input->h, i, tempV);
         t1 = calcolaT(input->U, input->n, input->h, i);
         contatore++;
@@ -554,15 +579,15 @@ void pca(params *input)
 
         while (diff >= theta * t1)
         {
-            prodottoMatriceTrasp(input->V, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, i, input->k, input->n, input->h);
+            prodottoMatriceTrasp(v, input->k, i, input->ds, input->k, input->n, input->U, input->n, 1, i, input->k, input->n, input->h);
 
             t = calcolaT(input->U, input->n, input->h, i);
-            dividi(input->V, input->k, input->h, i, t);
-            norm = norma(input->V, input->k, input->h, i);
-            dividi(input->V, input->k, input->h, i, norm);
+            dividiV(v, input->k, input->h, i, t);
+            norm = norma(v, input->k, input->h, i);
+            dividiV(v, input->k, input->h, i, norm);
 
-            prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, input->V, input->k, 1, input->k, input->n, input->h);
-            tempV = calcolaT(input->V, input->k, input->h, i);
+            prodottoMatrice(input->U, input->n, i, input->ds, input->n, input->k, v, input->k, 1, input->k, input->n, input->h);
+            tempV = calcolaTV(v, input->k, input->h, i);
             dividi(input->U, input->n, input->h, i, tempV);
             t1 = calcolaT(input->U, input->n, input->h, i);
             contatore++;
@@ -571,6 +596,10 @@ void pca(params *input)
             diff = t1 - t;
             if (diff < 0)
                 diff = diff * -1;
+        }
+        for (int i = 0; i < input->k; i++)
+        {
+            input->V[i * input->h + i] = v[i];
         }
         // printf("\n diff %f  ca %f", diff, theta * t1);
         // printf("  fine iterazione %d ", i);
@@ -595,6 +624,8 @@ void pca(params *input)
     //         printf("V %f ", input->V[i * input->h + j]);
     //     }
     // }
+    free_block(v);
+    free_block(u);
     free_block(input->ds);
     input->ds = input->U;
 
@@ -657,13 +688,13 @@ float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
 {
     float somma = 0;
 
-    // int i = 0;
-    // for (; i < k; i++)
-    // {
-    //     somma = somma + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
-    // }
+    int i = 0;
+    for (; i < k; i++)
+    {
+        somma = somma + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
+    }
 
-    euc_dist(qs, id_qs, ds, id_ds, k, &somma);
+    // euc_dist(qs, id_qs, ds, id_ds, k, &somma);
     return sqrtf(somma);
 }
 
