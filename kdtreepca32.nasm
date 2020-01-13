@@ -420,4 +420,3 @@ euc_dist:
 		mov	esp, ebp							; ripristina lo Stack Pointer
 		pop	ebp									; ripristina il Base Pointer
 		ret										; torna alla funzione C chiamante
-
