@@ -88,6 +88,100 @@ extern free_block
 	add	esp, 4
 %endmacro
 
+global calcolaTAss
+
+vect      equ     8
+numEle  equ     12
+result  equ     16
+
+calcolaTAss:
+
+    push	ebp                 ; salva il Base Pointer
+    mov		ebp, esp            ; il Base Pointer punta al Record di Attivazione corrente
+    push	ebx                 ; salva i registri da preservare
+    push	esi
+    push	edi
+
+    mov     eax, [ebp+vect]       ; eax = index base vettore
+    mov     ebx, [ebp+numEle]       ; ebx = size vettore
+    sub     ebx, dim+UNROLL         ; ebx = size - 16
+
+    xor     esi, esi                ; variabile i di iterazione
+    xorps   xmm0, xmm0              ; xmm0 somme parziali
+
+
+    loop_quo:
+        cmp     esi, ebx
+        jg      loop_4
+
+        ;prendo 16 valori consecutivi
+        movups  xmm1, [eax+4*esi]                ; [vect + 4*i ]
+        mulps   xmm1, xmm1
+        addps   xmm0, xmm1
+
+        movups  xmm2, [eax+4*esi+1*dim*UNROLL]   ; [vect + 4*i  + 16]
+        mulps   xmm2, xmm2
+        addps   xmm0, xmm2
+
+        movups  xmm3, [eax+4*esi+2*dim*UNROLL]   ; [vect + 4*i  + 32]
+        mulps   xmm3, xmm3
+        addps   xmm0, xmm3
+
+        movups  xmm4, [eax+4*esi+3*dim*UNROLL]   ; [vect + 4*i  + 48]
+        mulps   xmm4, xmm4
+        addps   xmm0, xmm4
+
+        add esi, dim*UNROLL
+        jmp loop_quo
+
+
+        mov     ebx, [ebp+numEle]               ; ebx = size elem
+        sub     ebx, dim                        ; ebx = size - 4
+
+    loop_4:
+        cmp     esi, ebx
+        jmp     h_add_2
+
+        movups  xmm1, [eax+4*esi]                ; [vect + 4*i + j*4]
+        mulps   xmm1, xmm1
+        addps   xmm0, xmm1
+
+        add     esi, dim
+        jmp     loop_4
+
+
+    h_add_2:
+        haddps  xmm0, xmm0                      ; riduzione somma
+        haddps  xmm0, xmm0                      ; riduzione somma
+
+        mov     ebx, [ebp+numEle]               ; ebx = size elem
+    
+    loop_rest:
+        cmp     esi, ebx
+        jge     end_2
+
+
+        movss   xmm1, [eax+esi*4]               ;[vect + i*4] 
+        mulss   xmm1, xmm1
+        addss   xmm0, xmm1
+
+        inc     esi
+        jmp loop_rest
+
+    end_2:
+        mov     eax, [ebp+result]
+        movss   [eax], xmm0
+
+    pop	edi                     ; ripristina i registri da preservare
+    pop	esi
+    pop	ebx
+    mov	esp, ebp                ; ripristina lo Stack Pointer
+    pop	ebp                     ; ripristina il Base Pointer
+    ret                         ; torna alla funzione C chiamante
+
+
+
+
 ; ------------------------------------------------------------
 ; Funzioni
 ; ------------------------------------------------------------
@@ -95,22 +189,20 @@ extern free_block
 ;   multi3: moltiplica matrice ds per il vettore colonna di V 
 ;   il risultato viene scritto in una colle della matrice U
 
-global multi3
+global prodottoMatriceAss
 
 dataset      equ     8
 V       equ     12
 U       equ     16
-cut		equ		20              ; parametro colonna fissato per colonna di V e U
-riga	equ		24              ; parametro riga i che scorre per le righe di ds
-k		equ		28
-h		equ		32
+rigaI	equ		20              ; parametro riga i che scorre per le righe di ds
+k		equ		24
 
 dim		equ		4
 UNROLL  equ     4
 
 
 
-multi3:
+prodottoMatriceAss:
 
         ; ------------------------------------------------------------
         ; Sequenza di ingresso nella funzione
@@ -125,175 +217,87 @@ multi3:
         ; ------------------------------------------------------------
         ; legge i parametri dal Record di Attivazione corrente
         ; ------------------------------------------------------------
-        
+        mov		edx, [ebp+rigaI]	    ; edx = n     i = var iterativa da 0 a n
+        xor     edi, edi                
+
+    forI:
+        cmp     edi, edx
+        je      close
+
+
         mov     eax, [ebp+k]        ; eax = k
-        mov		ecx, [ebp+riga]	    ; i = var iterativa da 0 a n
+        mov     ecx, edi
         imul    ecx, eax            ; ecx = i*k
         sub     eax, dim*UNROLL     ; eax= k-16
         imul    ecx, dim            ; ecx= i*k*4
         add     ecx, [ebp+dataset]  ; ecx= ds + i*k*4
-        mov     edx, [ebp+cut]      ; edx= cut
+        mov     ebx, [ebp+V]        ; ebx = V        
 
         xor     esi, esi            ; esi è j variabile iterativa da 0 a k-4
         xorps   xmm3, xmm3          ;azzero xmm3 per le somme parziali
 
-
-        ;non modificare ecx, esi, eax, edx
+        ;non modificare ecx, esi, eax, ebx
         ;ecx= ds + i*k*4
         ;esi = j
         ;eax= k-4
-        ;edx= cut
+        ;ebx = V 
 
-    loop_q_1:
-        cmp     esi, eax            ; if(j>k-16)
-        jg      h_add_1               ; se eax =k-16 salta alle istruzioni h_add altrimenti continua
+        loop_q_1:
+            cmp     esi, eax            ; if(j>k-16)
+            jg      h_add_1               ; se eax =k-16 salta alle istruzioni h_add altrimenti continua
 
-        ; devo riempire il registro xmm0 con 4 valori non consecutivi di V
-        movups  xmm0, [ecx+4*esi]   ; [ds + 4*i*k + j*4]
-        movups  xmm4, [ecx+4*esi+1*dim*UNROLL]   ; [ds + 4*i*k + j*4 + 16]
-        movups  xmm5, [ecx+4*esi+2*dim*UNROLL]   ; [ds + 4*i*k + j*4 + 32]
-        movups  xmm6, [ecx+4*esi+3*dim*UNROLL]   ; [ds + 4*i*k + j*4 + 48]
+            ;prendo 16 valori consecutivi di ds
+            movups  xmm0, [ecx+4*esi]                ; [ds + 4*i*k + j*4]
+            movups  xmm4, [ecx+4*esi+1*dim*UNROLL]   ; [ds + 4*i*k + j*4 + 16]
+            movups  xmm5, [ecx+4*esi+2*dim*UNROLL]   ; [ds + 4*i*k + j*4 + 32]
+            movups  xmm6, [ecx+4*esi+3*dim*UNROLL]   ; [ds + 4*i*k + j*4 + 48]
 
-        ;1° iterazione su V
-        mov     edi, 4              ; edi: cont è il contatore fino a 4
-        xorps   xmm2,xmm2           ; azzero xmm2
+            ;prendo 16 valori consecutivi di v
 
-        shf1:
-            shufps	xmm2, xmm2, 57  ; shift di una posizione a sinistra
+            mulps  xmm0, [ebx+esi*4]                ; [V+j*4]
+            addps   xmm3, xmm0                      ; xmm3 somme parziali
 
-        loop_4_1:
-            mov     ebx, [ebp+h]    ; ebx = h
-            imul    ebx, dim        ; ebx= h*4
-            imul    ebx, esi        ; ebx= h*4*j
-            add     ebx, [ebp+V]    ; ebx =V+ h*4*j
+            mulps   xmm4, [ebx+esi*4+1*dim*UNROLL]    ; [V+j*4+ 16]
+            addps   xmm3, xmm4                      ; xmm3 somme parziali
+
+            mulps   xmm5, [ebx+esi*4+2*dim*UNROLL]    ; [V+j*4+32]
+            addps   xmm3, xmm5                      ; xmm3 somme parziali
+
+            mulps   xmm6, [ebx+esi*4+3*dim*UNROLL]    ; [V+j*4+48]
+            addps   xmm3, xmm6                      ; xmm3 somme parziali
+
+
+            add     esi, dim*UNROLL     ; esi += 16
+            jmp     loop_q_1    
+
+        h_add_1:       
+            haddps xmm3, xmm3           ; riduco la somma a un valore solo
+            haddps xmm3, xmm3           ; riduco la somma a un valore solo
+    
+    loop_r_1:
+            mov     eax, [ebp+k]        ; eax = k
+            cmp     esi, eax
+            jge     end_1                 ; se j == k no loop resto vai a end altrimenti loop_r
             
-            ;prendo un valore di V
-            movss   xmm1, [ebx+edx*4]; [V + 4*j*h + 4*cut] 
-            xorps   xmm2, xmm1      ; sposto il valore in xmm2
+            ; prendo il valore di ds
+            movss   xmm0, [ecx+4*esi]   ; [ds + 4*i*k + j*4]
             
-            dec     edi             ; cont--
-            inc     esi             ; j++ (0 < j < k-4)
-            cmp     edi, 0          ; devo fare 4 iterazioni
-            jg      shf1      
-            jne     loop_4_1
+            ;prendo il valore di V
+            mulss   xmm0,[ebx+esi*4]    ; moltiplico il valore di ds per quello di V [V + 4*j*h + 4*cut]
+            addps   xmm3, xmm0          ; aggiungo alle somme parziali il risultato ottenuto
 
-        shufps	xmm2, xmm2, 57      ; shift di una posizione a destra
-        mulps   xmm0, xmm2          ; xmm0 moltiplico i 4 valori di ds con quelli di V
-        addps   xmm3, xmm0          ; xmm3 registro per somma parziale dei valori moltiplicati
+            inc esi
+            jmp loop_r_1
 
-        ;2° iterazione di V
-        mov     edi, 4              ; edi: cont è il contatore fino a 4
-        xorps   xmm2,xmm2           ; azzero xmm2
+        end_1:
+            mov     eax, [ebp+U]
+            ; mov     ebx, [ebp+rigaI]
+            movss   [eax+edi*4], xmm3       ; scrivo su U[u+ i*4] con 0 < i < n
 
-        shf2:
-            shufps	xmm2, xmm2, 57  ; shift di una posizione a sinistra
+            inc     edi
+            jmp forI
 
-        loop_4_2:
-            mov     ebx, [ebp+h]    ; ebx = h
-            imul    ebx, dim        ; ebx= h*4
-            imul    ebx, esi        ; ebx= h*4*j
-            add     ebx, [ebp+V]    ; ebx =V+ h*4*j
-            
-            ;prendo un valore di V
-            movss   xmm1, [ebx+edx*4+1*dim*UNROLL]; [V + 4*j*h + 4*cut] 
-            xorps   xmm2, xmm1      ; sposto il valore in xmm2
-            
-            dec     edi             ; cont--
-            inc     esi             ; j++ (0 < j < k-4)
-            cmp     edi, 0          ; devo fare 4 iterazioni
-            jg      shf2       
-            jne     loop_4_2
-
-        shufps	xmm2, xmm2, 57      ; shift di una posizione a destra
-        mulps   xmm4, xmm2          ; xmm0 moltiplico i 4 valori di ds con quelli di V
-        addps   xmm3, xmm4          ; xmm3 registro per somma parziale dei valori moltiplicati
-
-        ;3° iterazione V
-        mov     edi, 4              ; edi: cont è il contatore fino a 4
-        xorps   xmm2,xmm2           ; azzero xmm2
-
-        shf3:
-            shufps	xmm2, xmm2, 57  ; shift di una posizione a sinistra
-
-        loop_4_3:
-            mov     ebx, [ebp+h]    ; ebx = h
-            imul    ebx, dim        ; ebx= h*4
-            imul    ebx, esi        ; ebx= h*4*j
-            add     ebx, [ebp+V]    ; ebx =V+ h*4*j
-            
-            ;prendo un valore di V
-            movss   xmm1, [ebx+edx*4+3*dim*UNROLL]; [V + 4*j*h + 4*cut] 
-            xorps   xmm2, xmm1      ; sposto il valore in xmm2
-            
-            dec     edi             ; cont--
-            inc     esi             ; j++ (0 < j < k-4)
-            cmp     edi, 0          ; devo fare 4 iterazioni
-            jg      shf3       
-            jne     loop_4_3
-
-        shufps	xmm2, xmm2, 57      ; shift di una posizione a destra
-        mulps   xmm5, xmm2          ; xmm0 moltiplico i 4 valori di ds con quelli di V
-        addps   xmm3, xmm5          ; xmm3 registro per somma parziale dei valori moltiplicati
-
-        ; 4° iterazione di V
-        mov     edi, 4              ; edi: cont è il contatore fino a 4
-        xorps   xmm2,xmm2           ; azzero xmm2
-
-        shf4:
-            shufps	xmm2, xmm2, 57  ; shift di una posizione a sinistra
-
-        loop_4_4:
-            mov     ebx, [ebp+h]    ; ebx = h
-            imul    ebx, dim        ; ebx= h*4
-            imul    ebx, esi        ; ebx= h*4*j
-            add     ebx, [ebp+V]    ; ebx =V+ h*4*j
-            
-            ;prendo un valore di V
-            movss   xmm1, [ebx+edx*4+4*dim*UNROLL]; [V + 4*j*h + 4*cut] 
-            xorps   xmm2, xmm1      ; sposto il valore in xmm2
-            
-            dec     edi             ; cont--
-            inc     esi             ; j++ (0 < j < k-4)
-            cmp     edi, 0          ; devo fare 4 iterazioni
-            jg      shf4       
-            jne     loop_4_4
-
-        shufps	xmm2, xmm2, 57      ; shift di una posizione a destra
-        mulps   xmm6, xmm2          ; xmm0 moltiplico i 4 valori di ds con quelli di V
-        addps   xmm3, xmm6          ; xmm3 registro per somma parziale dei valori moltiplicati
-        jmp     loop_q    
-
-    h_add_1:       
-        haddps xmm3, xmm3           ; riduco la somma a un valore solo
-        haddps xmm3, xmm3           ; riduco la somma a un valore solo
-   
-   loop_r_1:
-        mov     eax, [ebp+k]        ; eax = k
-        cmp     esi, eax
-        jge     end_1                 ; se j == k no loop resto vai a end altrimenti loop_r
-        
-        ; prendo il valore di ds
-        movss   xmm0, [ecx+4*esi]   ; [ds + 4*i*k + j*4]
-        
-        ;prendo il valore di V
-        mov     ebx, [ebp+h]        ; ebx = h
-        imul    ebx, dim            ; ebx= h*4
-        imul    ebx, esi            ; ebx= h*4*j
-        add     ebx, [ebp+V]        ; ebx = h*4*j+V
-        ; movss   xmm1, [ebx+edx*4]   ; [V + 4*j*h + 4*cut]
-        mulss   xmm0,[ebx+edx*4]    ; moltiplico il valore di ds per quello di V [V + 4*j*h + 4*cut]
-        addps   xmm3, xmm0          ; aggiungo alle somme parziali il risultato ottenuto
-
-        inc esi
-        jmp loop_r_1
-
-    end_1:
-        mov		ecx, [ebp+riga]	    ; ecx è i = var iterativa da 0 a n
-        imul    ecx, [ebp+h]        ; ecx = i*h
-        imul    ecx, dim            ; ecx = i*h*4
-        add     ecx, [ebp+U]        ; ecx = i*h*4 + U
-        movss   [ecx+ edx*4], xmm3  ; aggiungo a [U+ i*4*h + cut*4] il valore in xmm3
-        
+    close:   
         ; ------------------------------------------------------------
         ; Sequenza di uscita dalla funzione
         ; ------------------------------------------------------------

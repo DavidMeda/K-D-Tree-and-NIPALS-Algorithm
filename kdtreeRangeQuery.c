@@ -29,6 +29,8 @@ float *calcoloQ(MATRIX, MATRIX, int, int, int, int);
 int indexList = 0;
 
 extern void euc_dist(MATRIX, int, MATRIX, int, int, float *);
+extern void calcolaTAss(float *vect, int numEle, float *result);
+extern void prodottoMatriceAss(float *ds, float *V, float *U, int i, int k);
 
 typedef struct
 {
@@ -419,11 +421,25 @@ float calcolaT(float *vect, int numEle)
 {
     int i;
     float res = 0;
-    for (i = 0; i < numEle; i++)
-    {
-        res += (vect[i]) * (vect[i]);
-    }
+    // for (i = 0; i < numEle; i++)
+    // {
+    //     res += (vect[i]) * (vect[i]);
+    // }
+    calcolaTAss(vect, numEle, &res);
     return res;
+}
+
+float norma(float *vect, int numEle)
+{
+    float acc = 0;
+    int i;
+    // for (i = 0; i < numEle; i++)
+    // {
+    //     acc += vect[i] * vect[i];
+    // }
+    calcolaTAss(vect, numEle, &acc);
+
+    return sqrtf(acc);
 }
 
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
@@ -440,33 +456,21 @@ void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
         v[i] = sum;
     }
 }
-// extern void multi3(float *ds, float *V, float *U, int cut, int i, int k, int h);
 
 void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k)
 {
     int i, j;
     float sum = 0;
-    for (i = 0; i < rigaDS; i++)
-    {
-        // multi3(ds, vect, result, cut, m, k, h);
-        sum = 0;
-        for (j = 0; j < k; j++)
-        {
-            sum += ds[i * k + j] * v[j];
-        }
-        u[i] = sum;
-    }
-}
-
-float norma(float *vect, int numEle)
-{
-    float acc = 0;
-    int i;
-    for (i = 0; i < numEle; i++)
-    {
-        acc += vect[i] * vect[i];
-    }
-    return sqrtf(acc);
+    // for (i = 0; i < rigaDS; i++)
+    // {
+        prodottoMatriceAss(ds, v, u, rigaDS, k);
+        // sum = 0;
+        // for (j = 0; j < k; j++)
+        // {
+        //     sum += ds[i * k + j] * v[j];
+        // }
+        // u[i] = sum;
+    // }
 }
 
 void dividi(float *vect, int numEle, float value)
@@ -541,75 +545,40 @@ void pca(params *input)
             prodottoMatriceTrasp(v, input->ds, u, input->n, input->k);
 
             t = calcolaT(u, input->n);
-            // printf("\n t %f : ", t);
             dividi(v, input->k, t);
             norm = norma(v, input->k);
 
-            // printf("\n norma = %f ", norm);
-            // for (int j = 0; j < input->k; j++)
-            // {
-            //     printf(" %f,  ", v[j]);
-            // }
             dividi(v, input->k, norm);
-
-            // printf("\nvettore V:");
 
             prodottoMatrice(u, input->ds, input->n, v, input->k);
             tempV = calcolaT(v, input->k);
             dividi(u, input->n, tempV);
             t1 = calcolaT(u, input->n);
-            // printf("\n t1 %f: ", t1);
 
             contatore++;
 
             diff = t1 - t;
             if (diff < 0)
                 diff = diff * -1;
-            // printf(" diff %f  ca %f  cont= %d", diff, theta * t1, contatore);
 
         } while (diff >= theta * t1);
 
-        // printf("\n diff %f  ca %f", diff, theta * t1);
-        // printf("\n fine iterazione %d ", i);
-
-        // if (i == 1)
-        // {
-        // for (int j = 0; j < 100; j++)
-        // {
-        //     printf("U: %f ", input->U[j * input->h + i]);
-        //     printf("V: %f ", input->V[j * input->h + i]);
-        // }
-        // }
         aggiornaDataset(input->ds, input->n, input->k, u, v);
 
-        // printf("\nvettore V:");
         for (int j = 0; j < input->k; j++)
         {
             input->V[j * input->h + i] = v[j];
-            // printf(" %f,  ", v[j]);
         }
-        // printf("\nvettore U:");
 
         for (int z = 0; z < input->n; z++)
         {
             input->U[z * input->h + i] = u[z];
-            // printf(" %f,  ", u[z]);
         }
     }
 
-    save_matrix(input->V, input->h, input->k, "MatrixV");
-    save_matrix(input->U, input->h, input->n, "MatrixU");
+    // save_matrix(input->V, input->h, input->k, "MatrixV");
+    // save_matrix(input->U, input->h, input->n, "MatrixU");
 
-    // printf("\nFINE PCA");
-
-    // for (int j = 0; j < input->h; j++)
-    // {
-    //     for (int i = 0; i < 100; i++)
-    //     {
-    //         printf("U %f ", input->U[i * input->h + j]);
-    //         printf("V %f ", input->V[i * input->h + j]);
-    //     }
-    // }
     free_block(u);
     free_block(v);
     free_block(input->ds);
@@ -620,11 +589,6 @@ void pca(params *input)
 
     free_block(input->qs);
     input->qs = newQS;
-
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     printf(" %f ", input->ds[i*input->]);
-    // }
 }
 
 void kdtree(params *input)
