@@ -28,7 +28,7 @@ void aggiornaDataset(MATRIX, int, int, float *, int, int, float *, int, int, int
 float *calcoloQ(MATRIX, MATRIX, int, int, int, int);
 int indexList = 0;
 
-extern void euc_dist(MATRIX, int, MATRIX, int, int, int *);
+extern void euc_dist(MATRIX, int, MATRIX, int, int, float *);
 
 typedef struct
 {
@@ -435,18 +435,18 @@ void prodottoMatrice(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, 
 {
     int m, i, j;
     float sum = 0;
-    for (m = 0; m < rigaA; m++)
+    for (m = 0; m < rigaRes; m++)
     {
-        multi3(ds, vect, result, cut, m, k, h);
-        // for (i = 0; i < colB; i++)
-        // {
-        //     sum = 0;
-        //     for (j = 0; j < rigaB; j++)
-        //     {
-        //         sum += ds[m * k + j] * vect[j * h + cut];
-        //     }
-        //     result[m * h + cut] = sum;
-        // }
+        // multi3(ds, vect, result, cut, m, k, h);
+        for (i = 0; i < colB; i++)
+        {
+            sum = 0;
+            for (j = 0; j < rigaB; j++)
+            {
+                sum += ds[m * k + j] * vect[j * h + cut];
+            }
+            result[m * h + cut] = sum;
+        }
     }
 }
 

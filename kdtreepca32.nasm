@@ -31,6 +31,12 @@
 
 
 
+
+
+
+
+
+
 section .data			; Sezione contenente dati inizializzati
 
 uno:		dd		1.0
@@ -101,6 +107,9 @@ h		equ		32
 
 dim		equ		4
 UNROLL  equ     4
+
+
+
 multi3:
 
         ; ------------------------------------------------------------
@@ -135,9 +144,9 @@ multi3:
         ;eax= k-4
         ;edx= cut
 
-    loop_q:
+    loop_q_1:
         cmp     esi, eax            ; if(j>k-16)
-        jg      h_add               ; se eax =k-16 salta alle istruzioni h_add altrimenti continua
+        jg      h_add_1               ; se eax =k-16 salta alle istruzioni h_add altrimenti continua
 
         ; devo riempire il registro xmm0 con 4 valori non consecutivi di V
         movups  xmm0, [ecx+4*esi]   ; [ds + 4*i*k + j*4]
@@ -152,7 +161,7 @@ multi3:
         shf1:
             shufps	xmm2, xmm2, 57  ; shift di una posizione a sinistra
 
-        loop_4:
+        loop_4_1:
             mov     ebx, [ebp+h]    ; ebx = h
             imul    ebx, dim        ; ebx= h*4
             imul    ebx, esi        ; ebx= h*4*j
@@ -166,7 +175,7 @@ multi3:
             inc     esi             ; j++ (0 < j < k-4)
             cmp     edi, 0          ; devo fare 4 iterazioni
             jg      shf1      
-            jne     loop_4
+            jne     loop_4_1
 
         shufps	xmm2, xmm2, 57      ; shift di una posizione a destra
         mulps   xmm0, xmm2          ; xmm0 moltiplico i 4 valori di ds con quelli di V
@@ -254,14 +263,14 @@ multi3:
         addps   xmm3, xmm6          ; xmm3 registro per somma parziale dei valori moltiplicati
         jmp     loop_q    
 
-    h_add:       
+    h_add_1:       
         haddps xmm3, xmm3           ; riduco la somma a un valore solo
         haddps xmm3, xmm3           ; riduco la somma a un valore solo
    
-   loop_r:
+   loop_r_1:
         mov     eax, [ebp+k]        ; eax = k
         cmp     esi, eax
-        jge     end                 ; se j == k no loop resto vai a end altrimenti loop_r
+        jge     end_1                 ; se j == k no loop resto vai a end altrimenti loop_r
         
         ; prendo il valore di ds
         movss   xmm0, [ecx+4*esi]   ; [ds + 4*i*k + j*4]
@@ -276,9 +285,9 @@ multi3:
         addps   xmm3, xmm0          ; aggiungo alle somme parziali il risultato ottenuto
 
         inc esi
-        jmp loop_r
+        jmp loop_r_1
 
-    end:
+    end_1:
         mov		ecx, [ebp+riga]	    ; ecx è i = var iterativa da 0 a n
         imul    ecx, [ebp+h]        ; ecx = i*h
         imul    ecx, dim            ; ecx = i*h*4
@@ -298,14 +307,14 @@ multi3:
 global euc_dist
 
 
-dataset      equ     8
-i1       equ     12
-queryset       equ     16
-i2		equ		20
-k		equ		24
-output  equ  28
-dim		equ		4
-UNROLL		equ		16
+i1      equ 12
+queryset    equ 16
+i2 equ 20
+kk equ 24
+output equ 28
+
+UNROLL2 equ 16
+
 
 section .data                             ; Sezione contenente dati inizializzati
 section .bss                              ; Sezione contenente dati non inizializzati
@@ -330,11 +339,11 @@ euc_dist:
     loop_q:
         mov		ecx, [ebp+i1]	; i1 = var iterativa su ds da 0 a n
         mov		edx, [ebp+i2]	; i2 = var iterativa su qs da 0 a n
-        mov     eax, [ebp+k]    ;eax = k
-        sub     eax, UNROLL       ;eax= k-unroll
+        mov     eax, [ebp+kk]    ;eax = k
+        sub     eax, UNROLL2       ;eax= k-unroll
         cmp     esi, eax            ;if(j>k-4)
         jg      h_add               ;se eax =k-4 salta alle istruzioni h_add altrimenti continua
-        mov     edi, [ebp+k]        ;edi= k
+        mov     edi, [ebp+kk]        ;edi= k
         imul    ecx, edi            ;ecx = i1*k
         imul    ecx, dim            ;ecx= i1*k*4
         imul    edx, edi            ;ecx = i2*k
@@ -364,14 +373,14 @@ euc_dist:
         subps   xmm0, xmm1          ;xmm0 registro per somma parziale dei valori sotratti
         mulps   xmm0, xmm0         ;xmm0 per il quadrato
         addps   xmm2, xmm0          ;xmm3 registro per somma parziale dei valori
-        add esi,UNROLL
+        add esi,UNROLL2
         jmp     loop_q    
 
     h_add:       
         haddps xmm2, xmm2      ;riduco la somma a un valore solo
         haddps xmm2, xmm2       ;riduco la somma a un valore solo
      loop_r:
-        mov     eax, [ebp+k]    ;eax = k
+        mov     eax, [ebp+kk]    ;eax = k
         cmp     esi, eax
         jge      end       ;se j == k no loop resto vai a end altrimenti loop_r
         mov		ecx, [ebp+i1]	; i1 = var iterativa su ds da 0 a n
@@ -381,7 +390,7 @@ euc_dist:
         add     ecx, eax            ;ecx= ds + i1*k*4
 
         mov		edx, [ebp+i2]	; i2 = var iterativa su qs da 0 a n
-        mov     eax, [ebp+k]    ;eax = k
+        mov     eax, [ebp+kk]    ;eax = k
         imul    edx, eax            ;edx = i2*k
         imul    edx, dim            ;edx= i2*k*4
         mov     ebx, [ebp+queryset]     ;ebx= qs
