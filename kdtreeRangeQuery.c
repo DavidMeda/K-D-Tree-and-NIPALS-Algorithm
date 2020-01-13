@@ -28,6 +28,8 @@ void aggiornaDataset(MATRIX, int, int, float *, int, int, float *, int, int, int
 float *calcoloQ(MATRIX, MATRIX, int, int, int, int);
 int indexList = 0;
 
+extern void euc_dist(MATRIX, int, MATRIX, int, int, int *);
+
 typedef struct
 {
     char *filename;     //nome del file, estensione .ds per il data set, estensione .qs per l'eventuale query set
@@ -427,21 +429,24 @@ void prodottoMatriceTrasp(float *result, int rigaRes, int cut, MATRIX ds, int ri
         }
     }
 }
+extern void multi3(float *ds, float *V, float *U, int cut, int i, int k, int h);
+
 void prodottoMatrice(float *result, int rigaRes, int cut, MATRIX ds, int rigaA, int colA, float *vect, int rigaB, int colB, int k, int n, int h)
 {
     int m, i, j;
     float sum = 0;
     for (m = 0; m < rigaA; m++)
     {
-        for (i = 0; i < colB; i++)
-        {
-            sum = 0;
-            for (j = 0; j < rigaB; j++)
-            {
-                sum += ds[m * k + j] * vect[j * h + cut];
-            }
-            result[m * h + cut] = sum;
-        }
+        multi3(ds, vect, result, cut, m, k, h);
+        // for (i = 0; i < colB; i++)
+        // {
+        //     sum = 0;
+        //     for (j = 0; j < rigaB; j++)
+        //     {
+        //         sum += ds[m * k + j] * vect[j * h + cut];
+        //     }
+        //     result[m * h + cut] = sum;
+        // }
     }
 }
 
@@ -494,7 +499,7 @@ float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h, int n)
 
 void pca(params *input)
 {
-    printf("\nINIZIO PCA\n");
+    // printf("\nINIZIO PCA\n");
 
     centraMatrice(input->ds, input->n, input->k);
     input->V = get_block(sizeof(float), input->k * input->h); //dimensioni (k x h)
@@ -580,7 +585,7 @@ void pca(params *input)
         // }
         aggiornaDataset(input->ds, input->n, input->k, input->U, input->n, 1, input->V, 1, input->k, input->h, input->k, i);
     }
-    printf("\nFINE PCA");
+    // printf("\nFINE PCA");
 
     // for (int j = 0; j < input->h; j++)
     // {
@@ -652,11 +657,13 @@ float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
 {
     float somma = 0;
 
-    int i = 0;
-    for (; i < k; i++)
-    {
-        somma = somma + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
-    }
+    // int i = 0;
+    // for (; i < k; i++)
+    // {
+    //     somma = somma + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
+    // }
+
+    euc_dist(qs, id_qs, ds, id_ds, k, &somma);
     return sqrtf(somma);
 }
 

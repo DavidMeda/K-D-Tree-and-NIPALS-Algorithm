@@ -14,7 +14,7 @@ int main(int argc, char const *argv[])
 {
 
     int n = 1;
-    int k = 4;
+    int k = 5;
     int h = 2;
     int cut = 1;
     float *ds = _mm_malloc(sizeof(float) * n * k, 16);
@@ -52,7 +52,7 @@ int main(int argc, char const *argv[])
     }
     printf("]\n  MULTI2");
 
-    multi2(ds, V, U, cut, 0, k, h);
+    multi2(ds, V_malloc, U, cut, 0, k, h);
     for (int i = 0; i < n * h; i++)
     {
         printf("\nU[%d]: %f", i, U[i]);

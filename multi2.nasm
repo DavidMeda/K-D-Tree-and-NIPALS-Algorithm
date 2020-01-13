@@ -116,12 +116,13 @@ multi2:
         movss   xmm0, [ecx+4*esi]   ; [ds + 4*i*k + j*4]
 
         ;moltiplico per il valore di V
-        mov     ebx, [ebp+h]    ; ebx = h
-        imul    ebx, dim        ; ebx= h*4
-        imul    ebx, esi       ; ebx= h*4*j
+        ; mov     ebx, [ebp+h]    ; ebx = h
+        ; imul    ebx, dim        ; ebx= h*4
+        ; imul    ebx, esi       ; ebx= h*4*j
         ; ; mov     eax, [ebp+V]    ; eax=V
-        add     ebx, eax        ; ebx =V+ h*4*j
-        mulss  xmm0, [ebx];[V + *4*j]
+        ; add     ebx, eax        ; ebx =V+ h*4*j
+        mov     ebx, [ebp+V]
+        mulss  xmm0, [ebx+4*esi];[V + *4*j]
         addps   xmm1, xmm0          ; aggiungo alle somme parziali il risultato ottenuto
 
 
@@ -133,7 +134,7 @@ multi2:
         imul     ecx, [ebp+h]           ; ecx = i*h
         imul    ecx, dim            ; ecx = i*h*4
         add     ecx, [ebp+U]            ; ecx = i*h*4 + U
-        mov     edx, [ebp+h]      ; edx= cut
+        mov     edx, [ebp+cut]      ; edx= cut
 
         movss   [ecx+ edx*4], xmm1  ; aggiungo a [U+ i*4*h + cut*4] il valore in xmm3m3
         ; ------------------------------------------------------------
