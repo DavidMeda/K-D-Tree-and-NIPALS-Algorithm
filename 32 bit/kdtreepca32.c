@@ -33,7 +33,7 @@ extern void calcolaTAss(float *vect, int numEle, float *result);
 extern void prodottoMatriceAss(float *ds, float *V, float *U, int i, int k);
 extern void aggiornaDatasetAss(float *, float *, float *, int, int);
 extern void dividiAss(float *, int, float);
-extern void calcolaSqrt(float, float *);
+extern void calcolaSqrt(float *);
 
 typedef struct
 {
@@ -406,7 +406,6 @@ void centraMatrice(MATRIX ds, int n, int k)
     {
         acc = 0;
 
-        // acc = sommatoria(ds, n, k, j);
         for (i = 0; i < n; i++)
         {
             acc += ds[i * k + j];
@@ -441,9 +440,9 @@ float norma(float *vect, int numEle)
     //     acc += vect[i] * vect[i];
     // }
     calcolaTAss(vect, numEle, &acc);
-    // calcolaSqrt(acc, &acc);
+    calcolaSqrt(&acc);
 
-    return sqrtf(acc);
+    return acc;
 }
 
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
@@ -551,17 +550,17 @@ void pca(params *input)
             prodottoMatriceTrasp(v, input->ds, u, input->n, input->k);
 
             t = calcolaT(u, input->n);
-            dividi(v, input->k, t);
-            // dividiAss(v, input->k, t);
+            // dividi(v, input->k, t);
+            dividiAss(v, input->k, t);
             norm = norma(v, input->k);
 
-            dividi(v, input->k, norm);
-            // dividiAss(v, input->k, norm);
+            // dividi(v, input->k, norm);
+            dividiAss(v, input->k, norm);
 
             prodottoMatrice(u, input->ds, input->n, v, input->k);
             tempV = calcolaT(v, input->k);
-            dividi(u, input->n, tempV);
-            // dividiAss(u, input->n, tempV);
+            // dividi(u, input->n, tempV);
+            dividiAss(u, input->n, tempV);
 
             t1 = calcolaT(u, input->n);
 
@@ -645,7 +644,7 @@ float distance(float *h, MATRIX qs, int id_qs, int k, float *p)
 float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
 {
     float res = 0;
-
+    float somma = 0;
     int i = 0;
     // for (; i < k; i++)
     // {
@@ -654,6 +653,7 @@ float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
 
     euc_dist(qs, id_qs, ds, id_ds, k, &res);
 
+    // return sqrt(somma);
     return res;
 }
 
@@ -943,23 +943,23 @@ int main(int argc, char const *argv[])
     //
     if (input->r >= 0)
     {
-        if (!input->silent && input->display)
-        {
-            //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
-            printf("\nQuery Answer:\n");
-            for (i = 0; i < input->nq; i++)
-            {
-                printf("query %d: [ ", i);
-                for (j = 0; j < input->nQA; j++)
-                    if (input->QA[j * 2] == i)
-                        printf("%d ", input->QA[j * 2 + 1]);
-                printf("]\n");
-            }
-            printf("\n");
-        }
+        // if (!input->silent && input->display)
+        // {
+        //     //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
+        //     printf("\nQuery Answer:\n");
+        //     for (i = 0; i < input->nq; i++)
+        //     {
+        //         printf("query %d: [ ", i);
+        //         for (j = 0; j < input->nQA; j++)
+        //             if (input->QA[j * 2] == i)
+        //                 printf("%d ", input->QA[j * 2 + 1]);
+        //         printf("]\n");
+        //     }
+        //     printf("\n");
+        // }
 
-        sprintf(fname, "%s.qa", input->filename);
-        save_data_ris(fname, input->QA, input->nQA, 2, input->nq, input->n);
+        // sprintf(fname, "%s.qa", input->filename);
+        // save_data_ris(fname, input->QA, input->nQA, 2, input->nq, input->n);
         // read_ris(fname);
     }
 

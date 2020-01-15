@@ -29,14 +29,6 @@
 ;
 %include "sseutils.nasm"
 
-
-
-
-
-
-
-
-
 section .data			; Sezione contenente dati inizializzati
 
 uno:		dd		1.0
