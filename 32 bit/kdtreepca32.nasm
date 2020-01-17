@@ -84,33 +84,6 @@ extern free_block
 ; Funzioni
 ; ------------------------------------------------------------
 
-global calcolaSqrt
-
-valoreSqrt  equ     8
-output      equ     12
-
-calcolaSqrt:
-    push	ebp                 ; salva il Base Pointer
-    mov		ebp, esp            ; il Base Pointer punta al Record di Attivazione corrente
-    push	ebx                 ; salva i registri da preservare
-    push	esi
-    push	edi
-
-
-    movss     xmm0, [ebp+valoreSqrt]
-    shufps      xmm0, xmm0, 0h
-    sqrtss     xmm0, xmm0
-    mov         eax, [ebp+output]
-    movss       [eax], xmm0
-
-    pop	edi                     ; ripristina i registri da preservare
-    pop	esi
-    pop	ebx
-    mov	esp, ebp                ; ripristina lo Stack Pointer
-    pop	ebp                     ; ripristina il Base Pointer
-    ret                         ; torna alla funzione C chiamante
-
-
 
 
 global dividiAss
@@ -636,6 +609,116 @@ euc_dist:
     ; Sequenza di uscita dalla funzione
     ; ------------------------------------------------------------
 
+    pop  edi                  ; ripristina i registri da preservare
+    pop  esi
+    pop  ebx
+    mov  esp, ebp              ; ripristina lo Stack Pointer
+    pop  ebp                  ; ripristina il Base Pointer
+    ret                    ; torna alla funzione C chiamante
+
+
+
+
+global prodMatriceTrasAss
+
+datasetTras     equ     8
+vettoreVTras    equ     12
+vettoreUTras    equ     16
+nTras           equ     20
+kTras           equ     24
+
+
+prodMatriceTrasAss:
+    push    ebp                         ; salva il Base Pointer
+    mov      ebp, esp                    ; il Base Pointer punta al Record di Attivazione corrente
+    push    ebx                         ; salva i registri da preservare
+    push    esi
+    push    edi
+
+
+    xor     esi, esi                ; esi = i
+
+fori_tras:
+    mov     edx, [ebp+nTras]        ; edx = n
+    cmp     esi, edx
+    jge      endTras                ; se i >= n
+
+
+    xor     edi, edi                ; edi = j     
+
+    mov     ecx, [ebp+kTras]        ; ecx= k
+    mov     eax, [ebp+datasetTras]  ; eax= ds
+    imul    edx, esi, 4            ; edx = i*4
+    mov     ebx, [ebp+vettoreUTras] ; ebx = U
+
+    imul     ecx, edx                ; ecx = i*4*K
+    add     ecx, eax                ; ecx= i*4*k + ds
+
+
+    mov     eax, [ebp+vettoreVTras] ; eax = V
+
+    movss   xmm0, [ebx +esi*4]      ; xmm0 c'è il valore di U
+    shufps  xmm0, xmm0, 0              ; xmm0 con propagazione valore
+    ; non cambiare esi, edi, ecx (per ds), eax (per V)
+
+    forj_tras:
+        mov     edx, [ebp+kTras]    ; edx = k
+        sub     edx, 16              ; edx = k-4
+        cmp     edi, edx                      
+        jg     BforjResto_tras           ; se j >= k-4
+        ; posso usare ebx, edx
+        movups  xmm1, [eax+4*edi]   ;  xmm1 4 valori di V per scrittura
+        movups  xmm2, [ecx +4*edi]  ; xmm2 4 valori di ds
+        mulps   xmm2, xmm0          ; moltiplico 4 val ds per 1 val di U
+        addps   xmm1, xmm2
+        
+        movups  xmm3, [eax+4*edi+16]   ;  xmm1 4 valori di V per scrittura
+        movups  xmm4, [ecx +4*edi+16]  ; xmm2 4 valori di ds
+        mulps   xmm4, xmm0          ; moltiplico 4 val ds per 1 val di U
+        addps   xmm3, xmm4
+
+        movups  xmm5, [eax+4*edi+32]   ;  xmm1 4 valori di V per scrittura
+        movups  xmm6, [ecx +4*edi+32]  ; xmm2 4 valori di ds
+        mulps   xmm6, xmm0          ; moltiplico 4 val ds per 1 val di U
+        addps   xmm5, xmm6
+
+        movups  xmm2, [eax+4*edi+48]   ;  xmm1 4 valori di V per scrittura
+        movups  xmm4, [ecx +4*edi+48]  ; xmm2 4 valori di ds
+        mulps   xmm4, xmm0          ; moltiplico 4 val ds per 1 val di U
+        addps   xmm2, xmm4
+
+
+        movups  [eax+4*edi], xmm1
+        movups  [eax+4*edi+16], xmm3
+        movups  [eax+4*edi+32], xmm5
+        movups  [eax+4*edi+48], xmm2
+
+
+        add     edi, 16
+        jmp     forj_tras
+   
+    BforjResto_tras:
+        add     edx, 16          ; edx = k
+    
+    forjResto_tras:
+        cmp     edi, edx
+        jge      Bfori_tras
+        movss  xmm1, [eax+4*edi]   ;  xmm1 1 valori di V per scrittura
+        movss  xmm2, [ecx +4*edi]  ; xmm2 1 valori di ds
+        mulss   xmm2, xmm0          ; moltiplico 4 val ds per 1 val di U
+        addss   xmm1, xmm2
+        
+        movss   [eax+4*edi], xmm1
+        
+        inc     edi
+        jmp     forjResto_tras
+
+Bfori_tras:
+    inc     esi                     ; i++
+    jmp     fori_tras
+
+
+endTras:
     pop  edi                  ; ripristina i registri da preservare
     pop  esi
     pop  ebx

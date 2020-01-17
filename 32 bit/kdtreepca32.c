@@ -34,6 +34,7 @@ extern void prodottoMatriceAss(float *ds, float *V, float *U, int i, int k);
 extern void aggiornaDatasetAss(float *, float *, float *, int, int);
 extern void dividiAss(float *, int, float);
 extern void calcolaSqrt(float *);
+extern void prodMatriceTrasAss(float *, float *, float *, int, int);
 
 typedef struct
 {
@@ -440,30 +441,33 @@ float norma(float *vect, int numEle)
     //     acc += vect[i] * vect[i];
     // }
     calcolaTAss(vect, numEle, &acc);
-    calcolaSqrt(&acc);
+    // calcolaSqrt(&acc);
 
-    return acc;
+    return sqrt(acc);
 }
 
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 {
     int i, j;
     float sum = 0;
-    for (i = 0; i < k; i++)
-    {
-        sum = 0;
-        for (j = 0; j < numEleU; j++)
-        {
-            sum += ds[j * k + i] * u[j];
-        }
-        v[i] = sum;
-    }
+    memset(v, 0, sizeof(float) * k);
+    prodMatriceTrasAss(ds, v, u, numEleU, k);
+    // for (i = 0; i < k; i++)
+    // {
+    //     sum = 0;
+    //     for (j = 0; j < numEleU; j++)
+    //     {
+    //         sum += ds[j * k + i] * u[j];
+    //     }
+    //     v[i] = sum;
+    // }
 }
 
 void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k)
 {
     int i, j;
     float sum = 0;
+
     prodottoMatriceAss(ds, v, u, rigaDS, k);
     // for (i = 0; i < rigaDS; i++)
     // {
@@ -958,9 +962,9 @@ int main(int argc, char const *argv[])
         //     printf("\n");
         // }
 
-        // sprintf(fname, "%s.qa", input->filename);
-        // save_data_ris(fname, input->QA, input->nQA, 2, input->nq, input->n);
-        // read_ris(fname);
+        sprintf(fname, "%s.qa", input->filename);
+        save_data_ris(fname, input->QA, input->nQA, 2, input->nq, input->n);
+        read_ris(fname);
     }
 
     if (!input->silent)
