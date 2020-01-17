@@ -33,7 +33,7 @@ extern void calcolaTAss(float *vect, int numEle, float *result);
 extern void prodottoMatriceAss(float *ds, float *V, float *U, int i, int k);
 extern void aggiornaDatasetAss(float *, float *, float *, int, int);
 extern void dividiAss(float *, int, float);
-extern void calcolaSqrt(float *);
+
 extern void prodMatriceTrasAss(float *, float *, float *, int, int);
 
 typedef struct
@@ -441,7 +441,6 @@ float norma(float *vect, int numEle)
     //     acc += vect[i] * vect[i];
     // }
     calcolaTAss(vect, numEle, &acc);
-    // calcolaSqrt(&acc);
 
     return sqrt(acc);
 }
@@ -596,7 +595,6 @@ void pca(params *input)
     free_block(v);
     free_block(input->ds);
     input->ds = input->U;
-
     float *newQS = calcoloQ(input->qs, input->V, input->nq, input->k, input->h, input->n);
     input->k = input->h;
 
@@ -947,20 +945,22 @@ int main(int argc, char const *argv[])
     //
     if (input->r >= 0)
     {
-        // if (!input->silent && input->display)
-        // {
-        //     //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
-        //     printf("\nQuery Answer:\n");
-        //     for (i = 0; i < input->nq; i++)
-        //     {
-        //         printf("query %d: [ ", i);
-        //         for (j = 0; j < input->nQA; j++)
-        //             if (input->QA[j * 2] == i)
-        //                 printf("%d ", input->QA[j * 2 + 1]);
-        //         printf("]\n");
-        //     }
-        //     printf("\n");
-        // }
+        if (!input->silent && input->display)
+         {
+             //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
+             printf("\nQuery Answer:\n");
+             for (i = 0; i < input->nq; i++)
+             {
+                 printf("query %d: [ ", i);
+                for (j = 0; j < input->n; j++)
+                {
+                     if (input->QA[(i*input->n)+j] == -1) break;
+                     else {printf("%d ", input->QA[(i*input->n)+j]);}
+                }
+                 printf("]\n");
+             }
+             printf("\n");
+        }
 
         sprintf(fname, "%s.qa", input->filename);
         save_data_ris(fname, input->QA, input->nQA, 2, input->nq, input->n);

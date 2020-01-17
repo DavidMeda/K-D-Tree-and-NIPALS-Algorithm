@@ -103,93 +103,129 @@
 //     return 0;
 // }
 
-void prodottoMatriceTrasp(float *v, float *ds, float *u, int numEleU, int k)
+// void prodottoMatriceTrasp(float *v, float *ds, float *u, int numEleU, int k)
+// {
+//     int i, j;
+//     float sum = 0;
+//     for (i = 0; i < k; i++)
+//     {
+//         sum = 0;
+//         for (j = 0; j < numEleU; j++)
+//         {
+//             sum += ds[j * k + i] * u[j];
+//         }
+//         v[i] = sum;
+//     }
+// }
+
+// extern void prodMatriceTrasAss(float *, float *, float *, int, int);
+// int main(int argc, char const *argv[])
+// {
+
+//     int k = 64;
+//     int n = 53;
+//     float *a = malloc(sizeof(float) * n * k);
+//     float *u = malloc(sizeof(float) * n);
+//     float *v = malloc(sizeof(float) * k);
+
+//       float *v1 = malloc(sizeof(float) * k);
+//     // printf("dataset\n");
+
+//     for (int i = 0; i < n * k; i++)
+//     {
+//         a[i] = i + 1;
+//         if (i == k - 1)
+//         {
+//             // printf("\n");
+//         }
+//         // printf(" %f, ", a[i]);
+//     }
+//     // printf("matrice u\n");
+
+//     for (int i = 0; i < n; i++)
+//     {
+//         u[i] = i + 10;
+//         // printf(" %f, ", u[i]);
+//     }
+
+//     prodottoMatriceTrasp(v, a, u, n, k);
+
+//     printf("\nmatrice risultato C u\n");
+
+//     for (int i = 0; i < k; i++)
+//     {
+//         printf(" %f, ", v[i]);
+//     }
+
+//     // memset(v,0, sizeof(float)*k);
+
+//     prodMatriceTrasAss(a, v1, u, n, k);
+
+//     printf("\nmatrice risultato assembly u\n");
+
+//     for (int i = 0; i < k; i++)
+//     {
+//         printf(" %f, ", v1[i]);
+//     }
+
+//     printf("\n\n\n");
+
+//     prodottoMatriceTrasp(v, a, u, n, k);
+
+//     printf("\nmatrice risultato C u\n");
+
+//     for (int i = 0; i < k; i++)
+//     {
+//         printf(" %f, ", v[i]);
+//     }
+
+//     memset(v1,0, sizeof(float)*k);
+
+//     prodMatriceTrasAss(a, v1, u, n, k);
+
+//     printf("\nmatrice risultato assembly u\n");
+
+//     for (int i = 0; i < k; i++)
+//     {
+//         printf(" %f, ", v1[i]);
+//     }
+
+//     return 0;
+// }
+
+void prodottoMatrice(float *u, float *ds, int rigaDS, float *v, int k)
 {
     int i, j;
     float sum = 0;
-    for (i = 0; i < k; i++)
-    {
-        sum = 0;
-        for (j = 0; j < numEleU; j++)
-        {
-            sum += ds[j * k + i] * u[j];
-        }
-        v[i] = sum;
-    }
+
+    // prodottoMatriceAss(ds, v, u, rigaDS, k);
+    // for (i = 0; i < rigaDS; i++)
+    // {
+    //     sum = 0;
+    //     for (j = 0; j < k; j++)
+    //     {
+    //         sum += ds[i * k + j] * v[j];
+    //     }
+    //     u[i] = sum;
+    // }
 }
 
-extern void prodMatriceTrasAss(float *, float *, float *, int, int);
+extern void prodottoMatriceAss(float *ds, float *v, float *u, int n, int k);
+
 int main(int argc, char const *argv[])
 {
+    float ds[] = {1, 2, 3, 1, 2, 3};
+    float v[] = {2, 2, 2};
+    float u[] = {};
 
-    int k = 64;
-    int n = 53;
-    float *a = malloc(sizeof(float) * n * k);
-    float *u = malloc(sizeof(float) * n);
-    float *v = malloc(sizeof(float) * k);
+    prodottoMatriceAss(ds, v, u, 2, 3);
 
-      float *v1 = malloc(sizeof(float) * k);
-    // printf("dataset\n");
-
-    for (int i = 0; i < n * k; i++)
+    for (int i = 0; i < 2; i++)
     {
-        a[i] = i + 1;
-        if (i == k - 1)
-        {
-            // printf("\n");
-        }
-        // printf(" %f, ", a[i]);
-    }
-    // printf("matrice u\n");
-
-    for (int i = 0; i < n; i++)
-    {
-        u[i] = i + 10;
-        // printf(" %f, ", u[i]);
+        printf(" %f ", u[i]);
     }
 
-    prodottoMatriceTrasp(v, a, u, n, k);
-
-    printf("\nmatrice risultato C u\n");
-
-    for (int i = 0; i < k; i++)
-    {
-        printf(" %f, ", v[i]);
-    }
-
-    // memset(v,0, sizeof(float)*k);
-
-    prodMatriceTrasAss(a, v1, u, n, k);
-
-    printf("\nmatrice risultato assembly u\n");
-
-    for (int i = 0; i < k; i++)
-    {
-        printf(" %f, ", v1[i]);
-    }
-
-    printf("\n\n\n");
-
-
-    prodottoMatriceTrasp(v, a, u, n, k);
-
-    printf("\nmatrice risultato C u\n");
-
-    for (int i = 0; i < k; i++)
-    {
-        printf(" %f, ", v[i]);
-    }
-
-    memset(v1,0, sizeof(float)*k);
-
-    prodMatriceTrasAss(a, v1, u, n, k);
-
-    printf("\nmatrice risultato assembly u\n");
-
-    for (int i = 0; i < k; i++)
-    {
-        printf(" %f, ", v1[i]);
-    }
+    printf("\n");
 
     return 0;
 }
