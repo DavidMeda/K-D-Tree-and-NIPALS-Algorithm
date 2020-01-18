@@ -30,11 +30,10 @@ int indexList = 0;
 
 extern void euc_dist(MATRIX, int, MATRIX, int, int, float *);
 extern void calcolaTAss(float *vect, int numEle, float *result);
-extern void prodottoMatriceAss(float *ds, float *V, float *U, int i, int k);
 extern void aggiornaDatasetAss(float *, float *, float *, int, int);
 extern void dividiAss(float *, int, float);
-
-extern void prodMatriceTrasAss(float *, float *, float *, int, int);
+extern void prodottoMatriceAss(float *ds, float *v, float *u, int n, int k);
+extern void prodMatriceTrasAss(float *ds, float *v, float *u, int n, int k);
 
 typedef struct
 {
@@ -422,9 +421,8 @@ void centraMatrice(MATRIX ds, int n, int k)
 
 float calcolaT(float *vect, int numEle)
 {
-    int i;
     float res = 0;
-    // for (i = 0; i < numEle; i++)
+    // for (int i = 0; i < numEle; i++)
     // {
     //     res += (vect[i]) * (vect[i]);
     // }
@@ -435,8 +433,7 @@ float calcolaT(float *vect, int numEle)
 float norma(float *vect, int numEle)
 {
     float acc = 0;
-    int i;
-    // for (i = 0; i < numEle; i++)
+    // for (int i = 0; i < numEle; i++)
     // {
     //     acc += vect[i] * vect[i];
     // }
@@ -466,8 +463,8 @@ void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k)
 {
     int i, j;
     float sum = 0;
-
     prodottoMatriceAss(ds, v, u, rigaDS, k);
+
     // for (i = 0; i < rigaDS; i++)
     // {
     //     sum = 0;
@@ -946,25 +943,29 @@ int main(int argc, char const *argv[])
     if (input->r >= 0)
     {
         if (!input->silent && input->display)
-         {
-             //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
-             printf("\nQuery Answer:\n");
-             for (i = 0; i < input->nq; i++)
-             {
-                 printf("query %d: [ ", i);
+        {
+            //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
+            printf("\nQuery Answer:\n");
+            for (i = 0; i < input->nq; i++)
+            {
+                printf("query %d: [ ", i);
                 for (j = 0; j < input->n; j++)
                 {
-                     if (input->QA[(i*input->n)+j] == -1) break;
-                     else {printf("%d ", input->QA[(i*input->n)+j]);}
+                    if (input->QA[(i * input->n) + j] == -1)
+                        break;
+                    else
+                    {
+                        printf("%d ", input->QA[(i * input->n) + j]);
+                    }
                 }
-                 printf("]\n");
-             }
-             printf("\n");
+                printf("]\n");
+            }
+            printf("\n");
         }
 
         sprintf(fname, "%s.qa", input->filename);
         save_data_ris(fname, input->QA, input->nQA, 2, input->nq, input->n);
-        read_ris(fname);
+        // read_ris(fname);
     }
 
     if (!input->silent)
