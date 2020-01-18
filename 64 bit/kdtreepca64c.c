@@ -28,12 +28,8 @@ void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v);
 float *calcoloQ(MATRIX, MATRIX, int, int, int, int);
 int indexList = 0;
 
-extern void euc_dist(MATRIX, int, MATRIX, int, int, float *);
-extern void calcolaTAss(float *vect, int numEle, float *result);
-extern void prodottoMatriceAss(float *ds, float *V, float *U, int i, int k);
-extern void aggiornaDatasetAss(float *, float *, float *, int, int);
-extern void dividiAss(float *, int, float);
-extern void prodMatriceTrasAss(float *, float *, float *, int, int);
+extern float euc_dist_64(MATRIX ds, MATRIX qs, int k);
+extern void dividiAss64(float * vett, int numEle, float *value);
 
 typedef struct
 {
@@ -103,7 +99,6 @@ MATRIX load_data(char *filename, int *n, int *k)
     status = fread(&cols, sizeof(int), 1, fp);
     status = fread(&rows, sizeof(int), 1, fp);
 
-    printf("\ncolonne= %d\trighe= %d\n", cols, rows);
 
     MATRIX data = alloc_matrix(rows, cols);
     status = fread(data, sizeof(float), rows * cols, fp);
@@ -423,11 +418,11 @@ float calcolaT(float *vect, int numEle)
 {
     int i;
     float res = 0;
-    // for (i = 0; i < numEle; i++)
-    // {
-    //     res += (vect[i]) * (vect[i]);
-    // }
-    calcolaTAss(vect, numEle, &res);
+    for (i = 0; i < numEle; i++)
+    {
+        res += (vect[i]) * (vect[i]);
+    }
+    // calcolaTAss(vect, numEle, &res);
     return res;
 }
 
@@ -435,11 +430,11 @@ float norma(float *vect, int numEle)
 {
     float acc = 0;
     int i;
-    // for (i = 0; i < numEle; i++)
-    // {
-    //     acc += vect[i] * vect[i];
-    // }
-    calcolaTAss(vect, numEle, &acc);
+    for (i = 0; i < numEle; i++)
+    {
+        acc += vect[i] * vect[i];
+    }
+    // calcolaTAss(vect, numEle, &acc);
 
     return sqrt(acc);
 }
@@ -449,16 +444,16 @@ void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
     int i, j;
     float sum = 0;
     memset(v, 0, sizeof(float) * k);
-    prodMatriceTrasAss(ds, v, u, numEleU, k);
-    // for (i = 0; i < k; i++)
-    // {
-    //     sum = 0;
-    //     for (j = 0; j < numEleU; j++)
-    //     {
-    //         sum += ds[j * k + i] * u[j];
-    //     }
-    //     v[i] = sum;
-    // }
+    // prodMatriceTrasAss(ds, v, u, numEleU, k);
+    for (i = 0; i < k; i++)
+    {
+        sum = 0;
+        for (j = 0; j < numEleU; j++)
+        {
+            sum += ds[j * k + i] * u[j];
+        }
+        v[i] = sum;
+    }
 }
 
 void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k)
@@ -466,16 +461,16 @@ void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k)
     int i, j;
     float sum = 0;
 
-    prodottoMatriceAss(ds, v, u, rigaDS, k);
-    // for (i = 0; i < rigaDS; i++)
-    // {
-    //     sum = 0;
-    //     for (j = 0; j < k; j++)
-    //     {
-    //         sum += ds[i * k + j] * v[j];
-    //     }
-    //     u[i] = sum;
-    // }
+    // prodottoMatriceAss(ds, v, u, rigaDS, k);
+    for (i = 0; i < rigaDS; i++)
+    {
+        sum = 0;
+        for (j = 0; j < k; j++)
+        {
+            sum += ds[i * k + j] * v[j];
+        }
+        u[i] = sum;
+    }
 }
 
 void dividi(float *vect, int numEle, float value)
@@ -495,11 +490,11 @@ void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
     for (i = 0; i < n; i++)
     {
 
-        // for (j = 0; j < k; j++)
-        // {
-        //     ds[i * k + j] -= u[i] * v[j];
-        // }
-        aggiornaDatasetAss(ds, u, v, i, k);
+        for (j = 0; j < k; j++)
+        {
+            ds[i * k + j] -= u[i] * v[j];
+        }
+        // aggiornaDatasetAss(ds, u, v, i, k);
     }
 }
 
@@ -534,10 +529,6 @@ void pca(params *input)
     {
         u[i] = input->ds[i * input->k];
     }
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     printf(" %f ", input->U[i * input->h]);
-    // }
     float theta = 1 * exp(-8);
     float norm = 0, tempV = 0, diff = 0, t = 0, t1 = 0;
     for (i = 0; i < input->h; i++)
@@ -545,7 +536,6 @@ void pca(params *input)
 
         diff = 0, t = 0, t1 = 0;
         int contatore = 0;
-        // printf("\ninizo iterazione %d ", i);
 
         do
         {
@@ -553,16 +543,16 @@ void pca(params *input)
 
             t = calcolaT(u, input->n);
             // dividi(v, input->k, t);
-            dividiAss(v, input->k, t);
+            dividiAss64(v, input->k, &t);
             norm = norma(v, input->k);
 
             // dividi(v, input->k, norm);
-            dividiAss(v, input->k, norm);
+            dividiAss64(v, input->k, &norm);
 
             prodottoMatrice(u, input->ds, input->n, v, input->k);
             tempV = calcolaT(v, input->k);
             // dividi(u, input->n, tempV);
-            dividiAss(u, input->n, tempV);
+            dividiAss64(u, input->n, &tempV);
 
             t1 = calcolaT(u, input->n);
 
@@ -646,13 +636,12 @@ float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
 {
     float res = 0;
     float somma = 0;
-    int i = 0;
     // for (; i < k; i++)
     // {
     //     somma = somma + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
     // }
 
-    euc_dist(qs, id_qs, ds, id_ds, k, &res);
+    res = euc_dist_64( ds,qs, k);
 
     // return sqrt(somma);
     return res;
@@ -967,7 +956,7 @@ int main(int argc, char const *argv[])
 
         sprintf(fname, "%s.qa", input->filename);
         save_data_ris(fname, input->QA, input->nQA, 2, input->nq, input->n);
-        read_ris(fname);
+        // read_ris(fname);
     }
 
     if (!input->silent)

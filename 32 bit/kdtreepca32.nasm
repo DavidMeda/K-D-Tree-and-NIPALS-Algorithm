@@ -1,32 +1,3 @@
-; ---------------------------------------------------------
-; PQNN con istruzioni SSE a 32 bit
-; ---------------------------------------------------------
-; F. Angiulli
-; 23/11/2017
-;
-
-;
-; Software necessario per l'esecuzione:
-;
-;     NASM (www.nasm.us)
-;     GCC (gcc.gnu.org)
-;
-; entrambi sono disponibili come pacchetti software 
-; installabili mediante il packaging tool del sistema 
-; operativo; per esempio, su Ubuntu, mediante i comandi:
-;
-;     sudo apt-get install nasm
-;     sudo apt-get install gcc
-;
-; potrebbe essere necessario installare le seguenti librerie:
-;
-;     sudo apt-get install lib32gcc-4.8-dev (o altra versione)
-;     sudo apt-get install libc6-dev-i386
-;
-; Per generare file oggetto:
-;
-;     nasm -f elf32 pqnn32.nasm 
-;
 %include "sseutils.nasm"
 
 section .data			; Sezione contenente dati inizializzati
@@ -44,23 +15,6 @@ section .bss			; Sezione contenente dati non inizializzati
 section .text			; Sezione contenente il codice macchina
 
 
-; ----------------------------------------------------------
-; macro per l'allocazione dinamica della memoria
-;
-;	getmem	<size>,<elements>
-;
-; alloca un'area di memoria di <size>*<elements> bytes
-; (allineata a 16 bytes) e restituisce in EAX
-; l'indirizzo del primo bytes del blocco allocato
-; (funziona mediante chiamata a funzione C, per cui
-; altri registri potrebbero essere modificati)
-;
-;	fremem	<address>
-;
-; dealloca l'area di memoria che ha inizio dall'indirizzo
-; <address> precedentemente allocata con getmem
-; (funziona mediante chiamata a funzione C, per cui
-; altri registri potrebbero essere modificati)
 
 extern get_block
 extern free_block
@@ -84,7 +38,7 @@ extern free_block
 ; Funzioni
 ; ------------------------------------------------------------
 
-
+;   questa funzione divide ogni elemento di un vettore per un numero dato
 
 global dividiAss
 
@@ -102,53 +56,52 @@ dividiAss:
 
     mov     eax, [ebp+vett]         ; eax = vett
     mov     edi, [ebp+numEleVett]   ; edi = numEle
-    sub     edi, 4                 ; edi = numele - 16
+    sub     edi, 16                 ; edi = numele - 16
 
-    xor esi, esi
+    xor     esi, esi                    ; esi = i
     movss   xmm0, [ebp+value]       ; valore divisore
     shufps  xmm0, xmm0, 0h
 
     loop16_div:
 
-        cmp esi, edi
-        ; jg  Bloop4_div
-        jg Bloop1_div
+        cmp     esi, edi
+        jg      Bloop4_div
 
-        movups  xmm1, [eax+ 4*esi]   ; [vettoer + 4*i]
+        movups  xmm1, [eax+ 4*esi]   ; [vettore + 4*i]
         divps   xmm1, xmm0
         movups  [eax+4*esi], xmm1
 
-        ; movups  xmm2, [eax+ 4*esi+16]   ; [vettoer + 4*i]
-        ; divps   xmm2, xmm0
-        ; movups  [eax+4*esi+16], xmm2
+        movups  xmm2, [eax+ 4*esi+16]   ; [vettore + 4*i]
+        divps   xmm2, xmm0
+        movups  [eax+4*esi+16], xmm2
 
-        ; movups  xmm3, [eax+ 4*esi+32]   ; [vettoer + 4*i]
-        ; divps   xmm3, xmm0
-        ; movups  [eax+4*esi+32], xmm3
+        movups  xmm3, [eax+ 4*esi+32]   ; [vettore + 4*i]
+        divps   xmm3, xmm0
+        movups  [eax+4*esi+32], xmm3
 
-        ; movups  xmm4, [eax+ 4*esi+48]   ; [vettoer + 4*i]
-        ; divps   xmm4, xmm0
-        ; movups  [eax+4*esi+48], xmm4
+        movups  xmm4, [eax+ 4*esi+48]   ; [vettore + 4*i]
+        divps   xmm4, xmm0
+        movups  [eax+4*esi+48], xmm4
 
-        add     esi, 4
+        add     esi, 16
         jmp     loop16_div
     
-    ; Bloop4_div:
-    ; mov     edi, [ebp+numEleVett]
-    ; sub     edi, 4                ;edi = numEle - 4
+    Bloop4_div:
+        add     edi, 12         ; edi = numEle - 4
 
-    ; loop4_div:
-    ;     cmp     esi, edi
-    ;     jg      Bloop1_div
+    loop4_div:
+        cmp     esi, edi
+        jg      Bloop1_div
 
-    ;     movups  xmm5, [eax+ 4*esi]   ; [vettoer + 4*i]
-    ;     divps   xmm5, xmm0
-    ;     movups  [eax+4*esi], xmm5
+        movups  xmm5, [eax+ 4*esi]   ; [vettoer + 4*i]
+        divps   xmm5, xmm0
+        movups  [eax+4*esi], xmm5
 
-    ;     add     esi, 4
-    ;     jmp loop4_div
+        add     esi, 4
+        jmp loop4_div
+    
     Bloop1_div:
-    mov     edi, [ebp+numEleVett]
+        add     edi, 4              ; edi = numEle
 
     loop1_div:
         cmp     esi, edi
@@ -191,7 +144,7 @@ aggiornaDatasetAss:
     mov     eax, [ebp+vettoreU] ; eax = u base
     mov     ebx, [ebp+vettoreV] ; eax = v base
     mov     ecx, [ebp+kcoll]     ; ecx = k size
-    sub     ecx, dim*UNROLL     ; ecx = k-16
+    sub     ecx, 16     ; ecx = k-16
 
     xor     esi, esi            ; esi = j
 
@@ -211,7 +164,7 @@ aggiornaDatasetAss:
         ; 1° ite
         movups  xmm1, [ebx+4*esi]  ; xmm1 = [v + j*4]
         mulps   xmm1, xmm0
-        movups  xmm2, [eax+esi*4]
+        movups  xmm2, [eax+esi*4]   ; xmm2 = [ds ]
         subps  xmm2, xmm1
         movups  [eax+esi*4],xmm2    ; store in ds
 
@@ -240,8 +193,7 @@ aggiornaDatasetAss:
 
         jmp     loop16
     Bloop4_r:
-        mov     ecx, [ebp+kcoll]     ; ecx = k size
-        sub     ecx, dim            ; ecx = k-4
+        add     ecx, 12     ; ecx = k size - 4
 
     loop4_r:
         cmp     esi, ecx
@@ -253,10 +205,11 @@ aggiornaDatasetAss:
         subps   xmm2, xmm1
         movups  [eax+esi*4],xmm2    ; store in ds
        
-        add     esi, dim
+        add     esi, 4
         jmp     loop4_r
+    
     Bloop1_r:
-        mov     ecx, [ebp+kcoll]     ; ecx = k size
+        add     ecx, 4           ; ecx = k size
 
     loop1_r:
         cmp     esi, ecx
@@ -495,106 +448,6 @@ prodottoMatriceAss:
         pop	ebp                     ; ripristina il Base Pointer
         ret                         ; torna alla funzione C chiamante
 
-; global prodottoMatriceAss
-
-; dataset      equ     8
-; V       equ     12
-; U       equ     16
-; n	equ		20              ; parametro riga i che scorre per le righe di ds
-; k		equ		24
-
-; prodottoMatriceAss:
-;     push    ebp                         ; salva il Base Pointer
-;     mov      ebp, esp                    ; il Base Pointer punta al Record di Attivazione corrente
-;     push    ebx                         ; salva i registri da preservare
-;     push    esi
-;     push    edi
-
-;     xor     esi, esi        ; esi = j (0,k)
-
-;     forj4_prod:
-;         mov     eax, [ebp+k]        ; eax = k
-;         sub     eax, 4              ; eax = k-4
-;         cmp     esi, eax            ; se j > k-4 salta ala resto di k
-;         jg     forj_resto_prod
-
-;         xor     edi, edi        ; edi = i (0,n)
-;         mov     ebx, [ebp+V]    ; ebx = V (vettore da moltiplicare)
-;         movups  xmm0, [ebx+4*esi]; prendo 4 valori di V [v + 4*j]
-;         mov     ecx, [ebp+dataset]      ; ecx = ds
-;         mov     edx, esi
-;         imul    edx, 4          ; edx = 4*j
-;         add     ecx, edx        ; ecx= ds + 4*j
-;         mov     ebx, [ebp+U]    ; ebx = U
-;         mov     edx, [ebp+n]        ; edx = n
-;         ; non modificare ecx
-;         ; edx = n, ecx = ds+4*j, ebx = U, eax = k - 4
-;         forI_prod:
-;             cmp     edi, edx
-;             je      endForI_prod         ; se i == n fine ciclo i
-
-;             mov     eax, [ebp+k]        ; eax = k
-;             imul    eax, 4
-;             imul    eax, edi             ;eax = i*k*4
-;             movups  xmm1, [ecx+eax]     ; xmm1 4 valori ds [ds+4*j + 4*i*k]
-;             movss  xmm5, [ebx+4*edi]        ; xmm5 1 valore di [U + 4*i] (vettore risultato)
-;             mulps   xmm1, xmm0              ; prodotto ds per V
-;             haddps  xmm1, xmm1              ; riduzione
-;             haddps  xmm1, xmm1              ; riduzione
-;             addss   xmm5, xmm1              ; U + somma parziale
-;             movss   [ebx+4*edi], xmm5       ; scrivo un valore di somma parziale su [U +4*i]
-;             inc     edi                     ; i++
-;             jmp     forI_prod
-            
-;     endForI_prod:
-;         add     esi, 4                  ; j+=4
-;         jmp     forj4_prod
-
-;     forj_resto_prod:
-;         mov     eax, [ebp+k]            ; eax = k
-;         cmp     esi, eax
-;         je     end_prod         ; se j == k  end ciclo resto
-
-;         xor     edi, edi        ; edi = i (0,n)
-;         mov     ebx, [ebp+V]    ; ebx = V (vettore da moltiplicare)
-;         movss   xmm0, [ebx+4*esi]; prendo 4 valori di V [v + 4*j]
-;         mov     ecx, [ebp+dataset]      ; ecx = ds
-;         mov     edx, esi        ; edx = j
-;         imul    edx, 4          ; edx = 4*j
-;         add     ecx, edx        ; ecx= ds + 4*j
-;         mov     ebx, [ebp+U]    ; ebx = U
-;         mov     edx, [ebp+n]        ; edx = n
-;         ; edx = n, ecx = ds+4*j, ebx = U, eax = k 
-        
-;         fori_prod2:
-;             cmp     edi, edx        ; se i>=n
-;             je     endForIResto_prod
-
-;             mov     eax, [ebp+k]        ; eax = k
-;             imul    eax, 4
-;             imul    eax, edi             ;eax = i*k*4
-;             movss   xmm1, [ecx+eax]     ; xmm1 1 valore ds [ds+4*j + 4*i*k]
-;             movss   xmm5, [ebx+4*edi]        ; xmm5 1 valore di [U + 4*i] (vettore risultato)
-;             mulss   xmm1, xmm0              ; prodotto ds per V
-;             addss   xmm5, xmm1
-;             movss   [ebx+4*edi], xmm5       ; scrivo un valore di somma parziale su [U +4*i]
-;             inc     edi                     ; i++
-;             jmp     fori_prod2
-
-;     endForIResto_prod:
-;         inc     esi                     ; j++
-;         jmp     forj_resto_prod
-
-
-; end_prod:
-;         pop	edi                     ; ripristina i registri da preservare
-;         pop	esi
-;         pop	ebx
-;         mov	esp, ebp                ; ripristina lo Stack Pointer
-;         pop	ebp                     ; ripristina il Base Pointer
-;         ret    
-
-
 
 global euc_dist
 
@@ -613,92 +466,92 @@ section .bss                              ; Sezione contenente dati non iniziali
 section .text                             ; Sezione contenente il codice macchina
 
 euc_dist:
-        ; ------------------------------------------------------------
-        ; Sequenza di ingresso nella funzione
-        ; ------------------------------------------------------------
-        push    ebp                         ; salva il Base Pointer
-        mov      ebp, esp                    ; il Base Pointer punta al Record di Attivazione corrente
-        push    ebx                         ; salva i registri da preservare
-        push    esi
-        push    edi
-        ; ------------------------------------------------------------
-        ; legge i parametri dal Record di Attivazione corrente
-        ; ------------------------------------------------------------
-        xorps xmm2,xmm2
-        xor     esi, esi               ;esi=variabile iterativa da 0 a k (fisso)
-        mov     edi, [ebp+kecu]        ;edi= k (fisso)
-        mov    ecx, [ebp+i1ecu]     ;ecx =i1 var iterativa su ds
-        imul    ecx, edi               ;ecx = i1*k
-        imul    ecx, dimecu            ;ecx= i1*k*4
-        mov     eax, [ebp+dsecu]       ;eax= ds
-        add     ecx, eax               ;ecx= ds + i1*k*4(fisso)
-        mov    edx, [ebp+i2ecu]     ;edx= i2 var iterativa su qs
-        imul    edx, edi               ;ecx = i2*k
-        imul    edx, dimecu            ;edx= i2*k*4
-        mov     ebx, [ebp+qsecu]       ;ebx= qs
-        add     edx, ebx               ;edx= qs + i2*k*4(fisso)
-        mov     eax, [ebp+kecu]        ;eax = k
-        sub     eax, UNROLLecu         ;eax= k-unroll (fisso)
-        mov     ebx, [ebp+kecu]        ;ebx = k
-        sub     ebx, 8                 ;ebx= k-8 (fisso)
+    ; ------------------------------------------------------------
+    ; Sequenza di ingresso nella funzione
+    ; ------------------------------------------------------------
+    push    ebp                         ; salva il Base Pointer
+    mov      ebp, esp                    ; il Base Pointer punta al Record di Attivazione corrente
+    push    ebx                         ; salva i registri da preservare
+    push    esi
+    push    edi
+    ; ------------------------------------------------------------
+    ; legge i parametri dal Record di Attivazione corrente
+    ; ------------------------------------------------------------
+    xorps xmm2,xmm2
+    xor     esi, esi               ;esi=variabile iterativa da 0 a k (fisso)
+    mov     edi, [ebp+kecu]        ;edi= k (fisso)
+    mov    ecx, [ebp+i1ecu]     ;ecx =i1 var iterativa su ds
+    imul    ecx, edi               ;ecx = i1*k
+    imul    ecx, dimecu            ;ecx= i1*k*4
+    mov     eax, [ebp+dsecu]       ;eax= ds
+    add     ecx, eax               ;ecx= ds + i1*k*4(fisso)
+    mov    edx, [ebp+i2ecu]     ;edx= i2 var iterativa su qs
+    imul    edx, edi               ;ecx = i2*k
+    imul    edx, dimecu            ;edx= i2*k*4
+    mov     ebx, [ebp+qsecu]       ;ebx= qs
+    add     edx, ebx               ;edx= qs + i2*k*4(fisso)
+    mov     eax, [ebp+kecu]        ;eax = k
+    sub     eax, UNROLLecu         ;eax= k-unroll (fisso)
+    mov     ebx, [ebp+kecu]        ;ebx = k
+    sub     ebx, 8                 ;ebx= k-8 (fisso)
         
     loop_q_ecu:     
-            cmp     esi, eax              
-            jg      loop_q4_ecu             
-            movups  xmm0, [ecx+4*esi]  ;[ds + 4*i1*k + j*4]
-            ; movups  xmm1, [edx+4*esi]  ;[qs + 4*i2*k + j*4]
-            subps   xmm0, [edx+4*esi]          
-            mulps   xmm0, xmm0         
-            addps   xmm2, xmm0          
-            movups  xmm0, [ecx+4*esi+16]  
-            ; movups  xmm1, [edx+4*esi+16]  
-            subps   xmm0, [edx+4*esi+16]          
-            mulps   xmm0, xmm0         
-            addps   xmm2, xmm0          
-            movups  xmm0, [ecx+4*esi+32]  
-            ; movups  xmm1, [edx+4*esi+32]  
-            subps   xmm0, [edx+4*esi+32]          
-            mulps   xmm0, xmm0         
-            addps   xmm2, xmm0          
-            movups  xmm0, [ecx+4*esi+48]  
-            ; movups  xmm1, [edx+4*esi+48]  
-            subps   xmm0, [edx+4*esi+48]          
-            mulps   xmm0, xmm0         
-            addps   xmm2, xmm0          ;xmm3 registro per somma parziale dei valori
-            add esi,UNROLLecu
-            jmp     loop_q_ecu 
+        cmp     esi, eax              
+        jg      loop_q4_ecu             
+        movups  xmm0, [ecx+4*esi]  ;[ds + 4*i1*k + j*4]
+        ; movups  xmm1, [edx+4*esi]  ;[qs + 4*i2*k + j*4]
+        subps   xmm0, [edx+4*esi]          
+        mulps   xmm0, xmm0         
+        addps   xmm2, xmm0          
+        movups  xmm0, [ecx+4*esi+16]  
+        ; movups  xmm1, [edx+4*esi+16]  
+        subps   xmm0, [edx+4*esi+16]          
+        mulps   xmm0, xmm0         
+        addps   xmm2, xmm0          
+        movups  xmm0, [ecx+4*esi+32]  
+        ; movups  xmm1, [edx+4*esi+32]  
+        subps   xmm0, [edx+4*esi+32]          
+        mulps   xmm0, xmm0         
+        addps   xmm2, xmm0          
+        movups  xmm0, [ecx+4*esi+48]  
+        ; movups  xmm1, [edx+4*esi+48]  
+        subps   xmm0, [edx+4*esi+48]          
+        mulps   xmm0, xmm0         
+        addps   xmm2, xmm0          ;xmm3 registro per somma parziale dei valori
+        add esi,UNROLLecu
+        jmp     loop_q_ecu 
 
     loop_q4_ecu:
             
-            cmp     esi, ebx              
-            jg      h_add_ecu           
-            movups  xmm0, [ecx+4*esi]  ;[ds + 4*i1*k + j*4]
-            ; movups  xmm1, [edx+4*esi]  ;[qs + 4*i2*k + j*4]
-            subps   xmm0, [edx+4*esi]          
-            mulps   xmm0, xmm0         
-            addps   xmm2, xmm0          
-            movups  xmm0, [ecx+4*esi+16]  
-            ; movups  xmm1, [edx+4*esi+16]  
-            subps   xmm0, [edx+4*esi+16]          
-            mulps   xmm0, xmm0         
-            addps   xmm2, xmm0          
-            add esi,8
-            ; jmp     loop_q4_ecu
+        cmp     esi, ebx              
+        jg      h_add_ecu           
+        movups  xmm0, [ecx+4*esi]  ;[ds + 4*i1*k + j*4]
+        ; movups  xmm1, [edx+4*esi]  ;[qs + 4*i2*k + j*4]
+        subps   xmm0, [edx+4*esi]          
+        mulps   xmm0, xmm0         
+        addps   xmm2, xmm0          
+        movups  xmm0, [ecx+4*esi+16]  
+        ; movups  xmm1, [edx+4*esi+16]  
+        subps   xmm0, [edx+4*esi+16]          
+        mulps   xmm0, xmm0         
+        addps   xmm2, xmm0          
+        add esi,8
+        ; jmp     loop_q4_ecu
 
     h_add_ecu:       
         haddps xmm2, xmm2      ;riduco la somma a un valore solo
         haddps xmm2, xmm2       ;riduco la somma a un valore solo
 
     loop_r_ecu:
-            cmp     esi, edi
-            jge      end_ecu       ;se j == k no loop resto vai a end altrimenti loop_r
-            movss   xmm0, [ecx+4*esi] ; [ds + 4*i1*k + j*4]
-            ; movss   xmm1, [edx+4*esi] ; [qs + 4*i2*k + j*4]
-            subss   xmm0, [edx+4*esi]          ;xmm0 registro per sottrazione parziale dei valori sotratti
-            mulss   xmm0, xmm0         ;xmm0 per il quadrato
-            addss   xmm2, xmm0          ;xmm3 registro per somma parziale dei valori   
-            inc esi
-            jmp loop_r_ecu
+        cmp     esi, edi
+        jge      end_ecu       ;se j == k no loop resto vai a end altrimenti loop_r
+        movss   xmm0, [ecx+4*esi] ; [ds + 4*i1*k + j*4]
+        ; movss   xmm1, [edx+4*esi] ; [qs + 4*i2*k + j*4]
+        subss   xmm0, [edx+4*esi]          ;xmm0 registro per sottrazione parziale dei valori sotratti
+        mulss   xmm0, xmm0         ;xmm0 per il quadrato
+        addss   xmm2, xmm0          ;xmm3 registro per somma parziale dei valori   
+        inc esi
+        jmp loop_r_ecu
 
     end_ecu:
         mov eax,[ebp+outputecu]
@@ -737,84 +590,76 @@ prodMatriceTrasAss:
 
     xor     esi, esi                ; esi = i
 
-fori_tras:
-    mov     edx, [ebp+nTras]        ; edx = n
-    cmp     esi, edx
-    jge      endTras                ; se i >= n
+    fori_tras:
+        mov     edx, [ebp+nTras]        ; edx = n
+        cmp     esi, edx
+        jge      endTras                ; se i >= n
 
+        xor     edi, edi                ; edi = j     
+        mov     ecx, [ebp+kTras]        ; ecx= k
+        mov     eax, [ebp+datasetTras]  ; eax= ds
+        imul    edx, esi, 4            ; edx = i*4
+        mov     ebx, [ebp+vettoreUTras] ; ebx = U
+        imul     ecx, edx                ; ecx = i*4*K
+        add     ecx, eax                ; ecx= i*4*k + ds
+        mov     eax, [ebp+vettoreVTras] ; eax = V
+        movss   xmm0, [ebx +esi*4]      ; xmm0 c'è il valore di U
+        shufps  xmm0, xmm0, 0              ; xmm0 con propagazione valore
+        ; non cambiare esi, edi, ecx (per ds), eax (per V)
 
-    xor     edi, edi                ; edi = j     
-
-    mov     ecx, [ebp+kTras]        ; ecx= k
-    mov     eax, [ebp+datasetTras]  ; eax= ds
-    imul    edx, esi, 4            ; edx = i*4
-    mov     ebx, [ebp+vettoreUTras] ; ebx = U
-
-    imul     ecx, edx                ; ecx = i*4*K
-    add     ecx, eax                ; ecx= i*4*k + ds
-
-
-    mov     eax, [ebp+vettoreVTras] ; eax = V
-
-    movss   xmm0, [ebx +esi*4]      ; xmm0 c'è il valore di U
-    shufps  xmm0, xmm0, 0              ; xmm0 con propagazione valore
-    ; non cambiare esi, edi, ecx (per ds), eax (per V)
-
-    forj_tras:
-        mov     edx, [ebp+kTras]    ; edx = k
-        sub     edx, 16              ; edx = k-4
-        cmp     edi, edx                      
-        jg     BforjResto_tras           ; se j >= k-4
-        ; posso usare ebx, edx
-        movups  xmm1, [eax+4*edi]   ;  xmm1 4 valori di V per scrittura
-        movups  xmm2, [ecx +4*edi]  ; xmm2 4 valori di ds
-        mulps   xmm2, xmm0          ; moltiplico 4 val ds per 1 val di U
-        addps   xmm1, xmm2
+        forj_tras:
+            mov     edx, [ebp+kTras]    ; edx = k
+            sub     edx, 16              ; edx = k-4
+            cmp     edi, edx                      
+            jg     BforjResto_tras           ; se j >= k-4
         
-        movups  xmm3, [eax+4*edi+16]   ;  xmm1 4 valori di V per scrittura
-        movups  xmm4, [ecx +4*edi+16]  ; xmm2 4 valori di ds
-        mulps   xmm4, xmm0          ; moltiplico 4 val ds per 1 val di U
-        addps   xmm3, xmm4
+            movups  xmm1, [eax+4*edi]   ;  xmm1 4 valori di V per scrittura
+            movups  xmm2, [ecx +4*edi]  ; xmm2 4 valori di ds
+            mulps   xmm2, xmm0          ; moltiplico 4 val ds per 1 val di U
+            addps   xmm1, xmm2
+            
+            movups  xmm3, [eax+4*edi+16]   ;  xmm1 4 valori di V per scrittura
+            movups  xmm4, [ecx +4*edi+16]  ; xmm2 4 valori di ds
+            mulps   xmm4, xmm0          ; moltiplico 4 val ds per 1 val di U
+            addps   xmm3, xmm4
 
-        movups  xmm5, [eax+4*edi+32]   ;  xmm1 4 valori di V per scrittura
-        movups  xmm6, [ecx +4*edi+32]  ; xmm2 4 valori di ds
-        mulps   xmm6, xmm0          ; moltiplico 4 val ds per 1 val di U
-        addps   xmm5, xmm6
+            movups  xmm5, [eax+4*edi+32]   ;  xmm1 4 valori di V per scrittura
+            movups  xmm6, [ecx +4*edi+32]  ; xmm2 4 valori di ds
+            mulps   xmm6, xmm0          ; moltiplico 4 val ds per 1 val di U
+            addps   xmm5, xmm6
 
-        movups  xmm2, [eax+4*edi+48]   ;  xmm1 4 valori di V per scrittura
-        movups  xmm4, [ecx +4*edi+48]  ; xmm2 4 valori di ds
-        mulps   xmm4, xmm0          ; moltiplico 4 val ds per 1 val di U
-        addps   xmm2, xmm4
+            movups  xmm2, [eax+4*edi+48]   ;  xmm1 4 valori di V per scrittura
+            movups  xmm4, [ecx +4*edi+48]  ; xmm2 4 valori di ds
+            mulps   xmm4, xmm0          ; moltiplico 4 val ds per 1 val di U
+            addps   xmm2, xmm4
 
+            movups  [eax+4*edi], xmm1
+            movups  [eax+4*edi+16], xmm3
+            movups  [eax+4*edi+32], xmm5
+            movups  [eax+4*edi+48], xmm2
 
-        movups  [eax+4*edi], xmm1
-        movups  [eax+4*edi+16], xmm3
-        movups  [eax+4*edi+32], xmm5
-        movups  [eax+4*edi+48], xmm2
-
-
-        add     edi, 16
-        jmp     forj_tras
-   
-    BforjResto_tras:
-        add     edx, 16          ; edx = k
+            add     edi, 16
+            jmp     forj_tras
     
-    forjResto_tras:
-        cmp     edi, edx
-        jge      Bfori_tras
-        movss  xmm1, [eax+4*edi]   ;  xmm1 1 valori di V per scrittura
-        movss  xmm2, [ecx +4*edi]  ; xmm2 1 valori di ds
-        mulss   xmm2, xmm0          ; moltiplico 4 val ds per 1 val di U
-        addss   xmm1, xmm2
+        BforjResto_tras:
+            add     edx, 16          ; edx = k
         
-        movss   [eax+4*edi], xmm1
-        
-        inc     edi
-        jmp     forjResto_tras
+        forjResto_tras:
+            cmp     edi, edx
+            jge      Bfori_tras
+            movss  xmm1, [eax+4*edi]   ;  xmm1 1 valori di V per scrittura
+            movss  xmm2, [ecx +4*edi]  ; xmm2 1 valori di ds
+            mulss   xmm2, xmm0          ; moltiplico 4 val ds per 1 val di U
+            addss   xmm1, xmm2
+            
+            movss   [eax+4*edi], xmm1
+            
+            inc     edi
+            jmp     forjResto_tras
 
-Bfori_tras:
-    inc     esi                     ; i++
-    jmp     fori_tras
+    Bfori_tras:
+        inc     esi                     ; i++
+        jmp     fori_tras
 
 
 endTras:
