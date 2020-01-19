@@ -29,7 +29,9 @@ float *calcoloQ(MATRIX, MATRIX, int, int, int, int);
 int indexList = 0;
 
 extern float euc_dist_64(MATRIX ds, MATRIX qs, int k);
-extern void dividiAss64(float * vett, int numEle, float *value);
+extern float calcolaTAss_64(float *vect, int numEle);
+extern void dividiAss64(float *vett, int numEle, float *value);
+extern void aggiornaDatasetAss_64(MATRIX ds, float *u, float *v, int rigaDs, int k);
 
 typedef struct
 {
@@ -98,7 +100,6 @@ MATRIX load_data(char *filename, int *n, int *k)
 
     status = fread(&cols, sizeof(int), 1, fp);
     status = fread(&rows, sizeof(int), 1, fp);
-
 
     MATRIX data = alloc_matrix(rows, cols);
     status = fread(data, sizeof(float), rows * cols, fp);
@@ -416,25 +417,23 @@ void centraMatrice(MATRIX ds, int n, int k)
 
 float calcolaT(float *vect, int numEle)
 {
-    int i;
     float res = 0;
-    for (i = 0; i < numEle; i++)
-    {
-        res += (vect[i]) * (vect[i]);
-    }
-    // calcolaTAss(vect, numEle, &res);
+    // for (int i = 0; i < numEle; i++)
+    // {
+    //     res += (vect[i]) * (vect[i]);
+    // }
+    res = calcolaTAss_64(vect, numEle);
     return res;
 }
 
 float norma(float *vect, int numEle)
 {
     float acc = 0;
-    int i;
-    for (i = 0; i < numEle; i++)
-    {
-        acc += vect[i] * vect[i];
-    }
-    // calcolaTAss(vect, numEle, &acc);
+    // for (int i = 0; i < numEle; i++)
+    // {
+    //     acc += vect[i] * vect[i];
+    // }
+    acc = calcolaTAss_64(vect, numEle);
 
     return sqrt(acc);
 }
@@ -443,7 +442,7 @@ void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 {
     int i, j;
     float sum = 0;
-    memset(v, 0, sizeof(float) * k);
+    // memset(v, 0, sizeof(float) * k);
     // prodMatriceTrasAss(ds, v, u, numEleU, k);
     for (i = 0; i < k; i++)
     {
@@ -481,6 +480,7 @@ void dividi(float *vect, int numEle, float value)
     {
         vect[i] = vect[i] / value;
     }
+    dividiAss64(vect, numEle, &value);
 }
 
 void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
@@ -490,11 +490,11 @@ void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
     for (i = 0; i < n; i++)
     {
 
-        for (j = 0; j < k; j++)
-        {
-            ds[i * k + j] -= u[i] * v[j];
-        }
-        // aggiornaDatasetAss(ds, u, v, i, k);
+        // for (j = 0; j < k; j++)
+        // {
+        //     ds[i * k + j] -= u[i] * v[j];
+        // }
+        aggiornaDatasetAss_64(ds, u, v, i, k);
     }
 }
 
@@ -641,10 +641,10 @@ float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
     //     somma = somma + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
     // }
 
-    res = euc_dist_64( ds,qs, k);
+    res = euc_dist_64(ds, qs, k);
 
-    // return sqrt(somma);
-    return res;
+    return sqrt(res);
+    // return res;
 }
 
 int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float r, int k, int n, int *list, float *point, int *nQA)
@@ -939,17 +939,17 @@ int main(int argc, char const *argv[])
             printf("\nQuery Answer:\n");
             for (i = 0; i < input->nq; i++)
             {
-                printf("query %d: [ ", i);
                 for (j = 0; j < input->n; j++)
                 {
                     if (input->QA[(i * input->n) + j] == -1)
                         break;
                     else
                     {
-                        printf("%d ", input->QA[(i * input->n) + j]);
+                        printf("query %d: [ ", i);
+                        printf("%d ]\n", input->QA[(i * input->n) + j]);
                     }
                 }
-                printf("]\n");
+                // printf("\n");
             }
             printf("\n");
         }

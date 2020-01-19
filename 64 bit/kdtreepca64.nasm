@@ -282,45 +282,44 @@ aggiornaDatasetAss_64:
     mov rbp, rsp
     push rbx
 
-    mov     rax, r8
+    mov     rax, r8                 ; rax = k
     sub     rax, 32                 ; rax = k - 32
-    xor     rdi, rdi                ; rdi = j
-    
+    xor     r9, r9                  ; rdi = j
     vbroadcastss    ymm0, [rsi+4*rcx]   ; riproduco [u + 4*i] in tutto ymm0
-    mov      rbx, rdi                   ; rbx = k
+    mov      rbx, rcx                   ; rbx = i
     imul     rbx, r8                    ; rbx = i*k
     imul     rbx, 4                     ; rbx = i*k*4
-    add      rbx, rdi                   ; rbx = ds + i*k*4
+    add      rbx, rdi                      ; rbx = ds + i*k*4
 
     loop32_agg:
-        cmp     rdi, rax            
+        cmp     r9, rax            
         jg      Bloop8_agg
 
-        vmovups ymm1, [rdx+4*rdi]       ; [v + 4*j]
+        vmovups ymm1, [rdx+4*r9]       ; [v + 4*j]
         vmulps  ymm1, ymm0              
-        vmovups ymm2, [rbx+4*rdi]       ; [ds + i*4*k + 4*j]
+        vmovups ymm2, [rbx+4*r9]       ; [ds + i*4*k + 4*j]
         vsubps  ymm2, ymm1
-        vmovups [rbx+4*rdi], ymm2       ; store in ds
+        vmovups [rbx+4*r9], ymm2       ; store in ds
 
-        vmovups ymm1, [rdx+4*rdi+32]       ; [v + 4*j]
+        vmovups ymm1, [rdx+4*r9+32]       ; [v + 4*j]
         vmulps  ymm1, ymm0              
-        vmovups ymm2, [rbx+4*rdi+32]       ; [ds + i*4*k + 4*j]
+        vmovups ymm2, [rbx+4*r9+32]       ; [ds + i*4*k + 4*j]
         vsubps  ymm2, ymm1
-        vmovups [rbx+4*rdi+32], ymm2       ; store in ds
+        vmovups [rbx+4*r9+32], ymm2       ; store in ds
 
-        vmovups ymm1, [rdx+4*rdi+64]       ; [v + 4*j]
+        vmovups ymm1, [rdx+4*r9+64]       ; [v + 4*j]
         vmulps  ymm1, ymm0              
-        vmovups ymm2, [rbx+4*rdi+64]       ; [ds + i*4*k + 4*j]
+        vmovups ymm2, [rbx+4*r9+64]       ; [ds + i*4*k + 4*j]
         vsubps  ymm2, ymm1
-        vmovups [rbx+4*rdi+64], ymm2       ; store in ds
+        vmovups [rbx+4*r9+64], ymm2       ; store in ds
 
-        vmovups ymm1, [rdx+4*rdi+96]       ; [v + 4*j]
+        vmovups ymm1, [rdx+4*r9+96]       ; [v + 4*j]
         vmulps  ymm1, ymm0              
-        vmovups ymm2, [rbx+4*rdi+96]       ; [ds + i*4*k + 4*j]
+        vmovups ymm2, [rbx+4*r9+96]       ; [ds + i*4*k + 4*j]
         vsubps  ymm2, ymm1
-        vmovups [rbx+4*rdi+96], ymm2       ; store in ds
+        vmovups [rbx+4*r9+96], ymm2       ; store in ds
 
-        add     rdi, 32
+        add     r9, 32
         jmp     loop32_agg
 
     Bloop8_agg:
@@ -328,16 +327,16 @@ aggiornaDatasetAss_64:
         sub     rax, 8                  ; rax = k - 8
 
     loop8_agg:
-        cmp     rdi, rax
+        cmp     r9, rax
         jg      BloopResto_agg
 
-        vmovups ymm1, [rdx+4*rdi]       ; [v + 4*j]
+        vmovups ymm1, [rdx+4*r9]       ; [v + 4*j]
         vmulps  ymm1, ymm0              
-        vmovups ymm2, [rbx+4*rdi]       ; [ds + i*4*k + 4*j]
+        vmovups ymm2, [rbx+4*r9]       ; [ds + i*4*k + 4*j]
         vsubps  ymm2, ymm1
-        vmovups [rbx+4*rdi], ymm2       ; store in ds
+        vmovups [rbx+4*r9], ymm2       ; store in ds
 
-        add     rdi, 8
+        add     r9, 8
         jmp     loop8_agg
 
     BloopResto_agg:
@@ -345,17 +344,71 @@ aggiornaDatasetAss_64:
         vshufps xmm0, xmm0, 0           ; riproduco 1° valore in tutto   
     
     loopResto_agg:
-        cmp     rdi, r8
+        cmp     r9, r8
         jge     end_agg
 
-        vmovss  xmm1, [rdx+4*rdi]       ; [v + 4*j]
+        vmovss  xmm1, [rdx+4*r9]       ; [v + 4*j]
         vmulss  xmm1, xmm0
-        vmovss  xmm2, [rbx+4*rdi]       ; [ds + i*4*k + 4*j]
+        vmovss  xmm2, [rbx+4*r9]       ; [ds + i*4*k + 4*j]
         vsubss  xmm2, xmm1
-        vmovss  [rbx+4*rdi], xmm2       ; store in ds
+        vmovss  [rbx+4*r9], xmm2       ; store in ds
+
+        inc     r9
+        jmp     loopResto_agg
 
     end_agg:
         pop	rbx
 		mov rsp, rbp
 		pop rbp
 		ret
+
+
+
+global prodMatriceAss_64
+;prodMatriceAss_64(RDI = ds, RSI = v, RDX = v, RCX = n, R8 = k )
+prodMatriceAss_64:
+    push rbp
+    mov rbp, rsp
+    push rbx
+
+    xor     r9, r9        ; rdi = i variabile iterativa (0, n)
+
+    forI_prod:
+        cmp     r9, rcx
+        je      end_prod
+
+        mov     rax, r8
+        sub     rax, 32         ; rax = k - 32
+
+        mov     rcx, r8         ; rcx = k
+        imul    rcx, rdi        ; rcx = k*i
+        imul    rcx, 4          ; rcx = k*i*4
+        add     rcx, rdi        ; rcx = k*i*4 + ds
+
+        xor     r10, r10        ; r10 = k varibile ite (0,k)
+        vxorps  ymm0, ymm0      ; ymm0 = azzero reg somme parziali
+
+        loopJ32_prod:
+            cmp     r10, rax
+            jmp     BloopJ8_prod
+
+            vmovups ymm1, [rcx+4*r10]       ; ymm1 [ds + 4*i*k + j*4]
+            vmulps  ymm1, [rdx+4*r10]      ; ymm1 moltiplicato [v + j*4]
+            vaddps  ymm0, ymm1              ; somme parziali
+
+
+
+
+        BloopJ8_prod:
+
+
+
+
+
+    end_prod:
+        pop	rbx
+		mov rsp, rbp
+		pop rbp
+		ret
+    
+

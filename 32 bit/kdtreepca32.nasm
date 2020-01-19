@@ -357,8 +357,8 @@ prodottoMatriceAss:
         ; ------------------------------------------------------------
         ; legge i parametri dal Record di Attivazione corrente
         ; ------------------------------------------------------------
-        mov		edx, [ebp+n]	    ; edx = n     i = var iterativa da 0 a n
-        xor     edi, edi                
+        mov		edx, [ebp+n]	    ; edx = n     
+        xor     edi, edi             ; i = var iterativa da 0 a n
 
     forI:
         cmp     edi, edx
@@ -369,7 +369,7 @@ prodottoMatriceAss:
         mov     ecx, edi
         imul    ecx, eax            ; ecx = i*k
         sub     eax, 4     ; eax= k-16
-        imul    ecx, dim            ; ecx= i*k*4
+        imul    ecx, 4            ; ecx= i*k*4
         add     ecx, [ebp+dataset]  ; ecx= ds + i*k*4
         mov     ebx, [ebp+V]        ; ebx = V        
 
