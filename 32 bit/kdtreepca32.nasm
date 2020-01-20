@@ -457,106 +457,86 @@ qsecu      equ     16
 i2ecu      equ     20
 kecu       equ     24
 outputecu  equ     28
-dimecu     equ      4
-UNROLLecu  equ     16
-
 
 section .data                             ; Sezione contenente dati inizializzati
 section .bss                              ; Sezione contenente dati non inizializzati
 section .text                             ; Sezione contenente il codice macchina
 
 euc_dist:
-    ; ------------------------------------------------------------
-    ; Sequenza di ingresso nella funzione
-    ; ------------------------------------------------------------
-    push    ebp                         ; salva il Base Pointer
-    mov      ebp, esp                    ; il Base Pointer punta al Record di Attivazione corrente
-    push    ebx                         ; salva i registri da preservare
-    push    esi
-    push    edi
-    ; ------------------------------------------------------------
-    ; legge i parametri dal Record di Attivazione corrente
-    ; ------------------------------------------------------------
-    xorps xmm2,xmm2
-    xor     esi, esi               ;esi=variabile iterativa da 0 a k (fisso)
-    mov     edi, [ebp+kecu]        ;edi= k (fisso)
-    mov    ecx, [ebp+i1ecu]     ;ecx =i1 var iterativa su ds
-    imul    ecx, edi               ;ecx = i1*k
-    imul    ecx, dimecu            ;ecx= i1*k*4
-    mov     eax, [ebp+dsecu]       ;eax= ds
-    add     ecx, eax               ;ecx= ds + i1*k*4(fisso)
-    mov    edx, [ebp+i2ecu]     ;edx= i2 var iterativa su qs
-    imul    edx, edi               ;ecx = i2*k
-    imul    edx, dimecu            ;edx= i2*k*4
-    mov     ebx, [ebp+qsecu]       ;ebx= qs
-    add     edx, ebx               ;edx= qs + i2*k*4(fisso)
-    mov     eax, [ebp+kecu]        ;eax = k
-    sub     eax, UNROLLecu         ;eax= k-unroll (fisso)
-    mov     ebx, [ebp+kecu]        ;ebx = k
-    sub     ebx, 8                 ;ebx= k-8 (fisso)
+        ; ------------------------------------------------------------
+        ; Sequenza di ingresso nella funzione
+        ; ------------------------------------------------------------
+        push    ebp                         ; salva il Base Pointer
+        mov      ebp, esp                    ; il Base Pointer punta al Record di Attivazione corrente
+        push    ebx                         ; salva i registri da preservare
+        push    esi
+        push    edi
+        ; ------------------------------------------------------------
+        ; legge i parametri dal Record di Attivazione corrente
+        ; ------------------------------------------------------------
+        xorps xmm4,xmm4
+        xor     esi, esi               ;esi=variabile iterativa da 0 a k (fisso)
+        mov     edi, [ebp+kecu]        ;edi= k (fisso)
+
+        mov     ecx, [ebp+i1ecu]       ;ecx =i1 var iterativa su ds
+        imul    ecx, edi               ;ecx = i1*k
+        imul    ecx, 4                 ;ecx= i1*k*4
+        mov     eax, [ebp+dsecu]       ;eax= ds
+        add     ecx, eax               ;ecx= ds + i1*k*4(fisso)
+
+        mov     edx, [ebp+i2ecu]       ;edx= i2 var iterativa su qs
+        imul    edx, edi               ;ecx = i2*k
+        imul    edx, 4                 ;edx= i2*k*4
+        mov     ebx, [ebp+qsecu]       ;ebx= qs
+        add     edx, ebx               ;edx= qs + i2*k*4(fisso)
+        mov     eax, edi        ;eax = k
+        sub     eax, 16                ;eax= k-16 (fisso)
         
     loop_q_ecu:     
-        cmp     esi, eax              
-        jg      loop_q4_ecu             
-        movups  xmm0, [ecx+4*esi]  ;[ds + 4*i1*k + j*4]
-        ; movups  xmm1, [edx+4*esi]  ;[qs + 4*i2*k + j*4]
-        subps   xmm0, [edx+4*esi]          
-        mulps   xmm0, xmm0         
-        addps   xmm2, xmm0          
-        movups  xmm0, [ecx+4*esi+16]  
-        ; movups  xmm1, [edx+4*esi+16]  
-        subps   xmm0, [edx+4*esi+16]          
-        mulps   xmm0, xmm0         
-        addps   xmm2, xmm0          
-        movups  xmm0, [ecx+4*esi+32]  
-        ; movups  xmm1, [edx+4*esi+32]  
-        subps   xmm0, [edx+4*esi+32]          
-        mulps   xmm0, xmm0         
-        addps   xmm2, xmm0          
-        movups  xmm0, [ecx+4*esi+48]  
-        ; movups  xmm1, [edx+4*esi+48]  
-        subps   xmm0, [edx+4*esi+48]          
-        mulps   xmm0, xmm0         
-        addps   xmm2, xmm0          ;xmm3 registro per somma parziale dei valori
-        add esi,UNROLLecu
-        jmp     loop_q_ecu 
-
-    loop_q4_ecu:
-            
-        cmp     esi, ebx              
-        jg      h_add_ecu           
-        movups  xmm0, [ecx+4*esi]  ;[ds + 4*i1*k + j*4]
-        ; movups  xmm1, [edx+4*esi]  ;[qs + 4*i2*k + j*4]
-        subps   xmm0, [edx+4*esi]          
-        mulps   xmm0, xmm0         
-        addps   xmm2, xmm0          
-        movups  xmm0, [ecx+4*esi+16]  
-        ; movups  xmm1, [edx+4*esi+16]  
-        subps   xmm0, [edx+4*esi+16]          
-        mulps   xmm0, xmm0         
-        addps   xmm2, xmm0          
-        add esi,8
-        ; jmp     loop_q4_ecu
+            cmp     esi, eax              
+            jg       h_add_ecu             
+            movups  xmm0, [ecx+4*esi] 
+            movups  xmm1, [edx+4*esi]
+            subps   xmm0, xmm1
+            mulps   xmm0, xmm0
+            addps   xmm4, xmm0 
+            movups  xmm0, [ecx+4*esi+16]    
+            movups  xmm1, [edx+4*esi+16]
+            subps   xmm0, xmm1
+            mulps   xmm0, xmm0
+            addps   xmm4, xmm0
+            movups  xmm0, [ecx+4*esi+32]   
+            movups  xmm1, [edx+4*esi+32]
+            subps   xmm0, xmm1
+            mulps   xmm0, xmm0
+            addps   xmm4, xmm0
+            movups  xmm0, [ecx+4*esi+48]   
+            movups  xmm1, [edx+4*esi+48]
+            subps   xmm0, xmm1
+            mulps   xmm0, xmm0
+            addps   xmm4, xmm0
+            add esi,16
+            jmp     loop_q_ecu 
 
     h_add_ecu:       
-        haddps xmm2, xmm2      ;riduco la somma a un valore solo
-        haddps xmm2, xmm2       ;riduco la somma a un valore solo
+        haddps xmm4, xmm4      ;riduco la somma a un valore solo
+        haddps xmm4, xmm4       ;riduco la somma a un valore solo
 
     loop_r_ecu:
-        cmp     esi, edi
-        jge      end_ecu       ;se j == k no loop resto vai a end altrimenti loop_r
-        movss   xmm0, [ecx+4*esi] ; [ds + 4*i1*k + j*4]
-        ; movss   xmm1, [edx+4*esi] ; [qs + 4*i2*k + j*4]
-        subss   xmm0, [edx+4*esi]          ;xmm0 registro per sottrazione parziale dei valori sotratti
-        mulss   xmm0, xmm0         ;xmm0 per il quadrato
-        addss   xmm2, xmm0          ;xmm3 registro per somma parziale dei valori   
-        inc esi
-        jmp loop_r_ecu
+            cmp     esi, edi
+            jge      end_ecu       ;se j == k no loop resto vai a end altrimenti loop_r
+            movss   xmm0, [ecx+4*esi] 
+            movups  xmm1, [edx+4*esi]
+            subss   xmm0,  xmm1       
+            mulss   xmm0, xmm0         
+            addss   xmm4, xmm0          ;xmm4 registro per somma parziale dei valori   
+            inc esi
+            jmp loop_r_ecu
 
     end_ecu:
         mov eax,[ebp+outputecu]
-        sqrtss      xmm2, xmm2
-        movss     [eax],xmm2      ; eax = risultato
+        sqrtss      xmm4, xmm4
+        movss     [eax],xmm4      ; eax = risultato
     ; ------------------------------------------------------------
     ; Sequenza di uscita dalla funzione
     ; ------------------------------------------------------------
@@ -567,6 +547,28 @@ euc_dist:
     mov  esp, ebp              ; ripristina lo Stack Pointer
     pop  ebp                  ; ripristina il Base Pointer
     ret                    ; torna alla funzione C chiamante
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

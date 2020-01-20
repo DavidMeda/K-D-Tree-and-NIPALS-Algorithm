@@ -116,6 +116,8 @@ MATRIX leggi(char *filename)
 //2147483647/8 =268435455,875 numero di byte della memoria
 //
 
+
+
 int main()
 {
     // int max_value=4294967295;  /////4294967295;
