@@ -28,7 +28,7 @@ void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v);
 float *calcoloQ(MATRIX, MATRIX, int, int, int);
 int indexList = 0;
 
-extern void euc_dist(MATRIX, int, MATRIX, int, int, float *);
+extern void euclideanDistanceAss(MATRIX, int, MATRIX, int, int, float *);
 extern void calcolaTAss(float *vect, int numEle, float *result);
 extern void aggiornaDatasetAss(float *, float *, float *, int, int);
 extern void dividiAss(float *, int, float);
@@ -180,7 +180,7 @@ void save_matrix(MATRIX a, int col, int rig, char *filename)
     for (int i = 0; i < rig * col; i++)
     {
         if (i % col == 0)
-            fprintf(fPointer, "\n\n");
+            fprintf(fPointer, "\n");
         fprintf(fPointer, " %f, ", a[i]);
     }
 
@@ -355,7 +355,7 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
 float *findRegion(MATRIX ds, int n, int k)
 {
     float *region = (float *)get_block(sizeof(float), 2 * k);
-    float h_min, h_max;
+    float h_min = 0, h_max = 0;
     int j, i;
     for (j = 0; j < k; j++)
     {
@@ -536,10 +536,6 @@ void pca(params *input)
     {
         u[i] = input->ds[i * input->k];
     }
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     printf(" %f ", input->U[i * input->h]);
-    // }
     float theta = 1 * exp(-8);
     float norm = 0, tempV = 0, diff = 0, t = 0, t1 = 0;
     for (i = 0; i < input->h; i++)
@@ -589,8 +585,8 @@ void pca(params *input)
         }
     }
 
-    // save_matrix(input->V, input->h, input->k, "MatrixV");
-    // save_matrix(input->U, input->h, input->n, "MatrixU");
+    // save_matrix(input->V, input->h, input->k, "MatrixV2");
+    // save_matrix(input->U, input->h, input->n, "MatrixU2");
 
     free_block(u);
     free_block(v);
@@ -598,13 +594,6 @@ void pca(params *input)
     input->ds = input->U;
     float *newQS = calcoloQ(input->qs, input->V, input->nq, input->k, input->h);
     input->k = input->h;
-    // printf("\n ");
-    // for(int i = 0; i<input->nq; i++){
-    //     for(int j = 0; j< input->h; j++){
-    //         printf(" nQS: %f   ", newQS[i*input->h + j]);
-    //     }
-    // }
-
     free_block(input->qs);
     input->qs = newQS;
 }
@@ -714,9 +703,9 @@ int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float 
 
 void range_query(params *input)
 {
-    input->QA = (int *)get_block(sizeof(int), input->n * input->nq);
+    // input->QA = (int *)get_block(sizeof(int), input->n * input->nq);
     // input->QA = (int *)malloc(sizeof(int) * input->n * input->nq);
-    // input->QA = (int *)_mm_malloc(sizeof(int) * input->n * input->nq, 16);
+    input->QA = (int *)_mm_malloc(sizeof(int) * input->n * input->nq, 16);
     float *point = get_block(sizeof(float), input->k);
     if (input->QA == NULL)
     {
@@ -916,6 +905,7 @@ int main(int argc, char const *argv[])
             printf("Kdtree building disabled\n");
         }
     }
+    printf("Punti queryset: %d\n", input->nq);
 
     if (input->h > 0)
     {
@@ -980,23 +970,23 @@ int main(int argc, char const *argv[])
         if (!input->silent && input->display)
         {
             //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
-            printf("\nQuery Answer:");
-            for (i = 0; i < input->nq; i++)
-            {
-                printf("query %d: [ ", i);
-                for (j = 0; j < input->n; j++)
-                {
-                    if (input->QA[(i * input->n) + j] == -1)
-                        break;
-                    else
-                    {
-                        printf("%d ", input->QA[(i * input->n) + j]);
-                    }
-                }
-                printf("]\t");
-                if (i % 10 == 0)
-                    printf("\n");
-            }
+            printf("\nQuery Answer %d:\n", input->nQA);
+            // for (i = 0; i < input->nq; i++)
+            // {
+            //     printf("query %d: [ ", i);
+            //     for (j = 0; j < input->n; j++)
+            //     {
+            //         if (input->QA[(i * input->n) + j] == -1)
+            //             break;
+            //         else
+            //         {
+            //             printf("%d ", input->QA[(i * input->n) + j]);
+            //         }
+            //     }
+            //     printf("]\t");
+            //     if (i % 10 == 0)
+            //         printf("\n");
+            // }
             printf("\n");
         }
 

@@ -132,20 +132,20 @@ int main()
 
     char *filename = "prova1";
     char fname[256];
-    int k = 128;
-    int n_point = 80003; //(int max=2147483647)
-    int n_query = 4003;
+    int k = 5;
+    int n_point = 10; //(int max=2147483647)
+    int n_query = 1;
     float *ds = (float *)get_block(sizeof(float), n_point * k);
     float *qs = (float *)get_block(sizeof(float), n_query * k);
 
     for (int i = 0; i < n_point * k; i++)
     {
-        ds[i] = rand() % 533;
+        ds[i] = rand() % 100;
         ds[i] = (float)ds[i] / 10;
     }
     for (int i = 0; i < n_query * k; i++)
     {
-        qs[i] = rand() % 800;
+        qs[i] = rand() % 100;
         qs[i] = (float)qs[i] / 10;
     }
     sprintf(fname, "%s.ds", filename);

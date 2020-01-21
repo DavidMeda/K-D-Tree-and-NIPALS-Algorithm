@@ -14,9 +14,9 @@ int partition(MATRIX, int *, int, int, int, int);
 void quicksort(MATRIX, int *, int, int, int, int);
 int findMedian(MATRIX, int *, int, int, int, int);
 struct kdtree_node *buildTreeRoot(MATRIX, int *, int, int, int);
-struct kdtree_node *buildTree(MATRIX, int *, int, int, int, int, int, int, int, float *);
+struct kdtree_node *buildTree(MATRIX, int *, int, int, int, int, int, int, float *);
 float *findRegion(MATRIX, int, int);
-float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k);
+float euclideanDistance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k);
 int rangeQuery(MATRIX, struct kdtree_node *, MATRIX, int, float, int, int, int *, float *, int *);
 void centraMatrice(MATRIX, int, int);
 float calcolaT(float *vect, int numEle);
@@ -28,10 +28,13 @@ void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v);
 float *calcoloQ(MATRIX, MATRIX, int, int, int, int);
 int indexList = 0;
 
-extern float euc_dist_64(MATRIX ds, MATRIX qs, int k);
+// funzioni Assembly  AVX
+extern float euclideanDistanceAss_64(MATRIX ds, MATRIX qs, int k);
 extern float calcolaTAss_64(float *vect, int numEle);
-extern void dividiAss64(float *vett, int numEle, float *value);
+extern void dividiAss_64(float *vett, int numEle, float *value);
 extern void aggiornaDatasetAss_64(MATRIX ds, float *u, float *v, int rigaDs, int k);
+extern void prodMatriceAss_64(float *ds, float *u, float *v, int n, int k);
+extern void prodMatriceTrasAss_64(float *ds, float *u, float *v, int n, int k);
 
 typedef struct
 {
@@ -185,8 +188,6 @@ void save_matrix(MATRIX a, int col, int rig, char *filename)
     fclose(fPointer);
 }
 
-//save_data_ris(fname, input->QA,input->nQA,2,input->nq,input->n);
-
 void save_data_ris(char *filename, int *X, int n, int k, int n_qs, int n_ds)
 {
     FILE *fp;
@@ -272,7 +273,7 @@ int findMedian(MATRIX dataset, int *indexSorted, int start, int indexMedian, int
     return indexMedian;
 }
 
-struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int oldCut, int start, int end, int numEle, int k, int type, float *regionp)
+struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, int end, int numEle, int k, int type, float *regionp)
 {
     if (numEle == 0)
         return NULL;
@@ -282,7 +283,7 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int oldCut, 
     node->region = get_block(sizeof(float), 2 * k);
 
     memcpy(node->region, regionp, sizeof(float) * 2 * k);
-
+    int oldCut = (liv - 1) % k;
     node->region[2 * (oldCut)] = ds[indexSorted[start] * k + (oldCut)];
     node->region[2 * (oldCut) + 1] = ds[indexSorted[end - 1] * k + (oldCut)];
 
@@ -306,19 +307,19 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int oldCut, 
     else if (numEleSx == 0)
     {
         node->left = NULL;
-        node->right = buildTree(ds, indexSorted, liv + 1, cut, indexMedian + 1, end, numEleDx, k, 1, node->region);
+        node->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1, node->region);
         return node;
     }
     else if (numEleDx == 0)
     {
         node->right = NULL;
-        node->left = buildTree(ds, indexSorted, liv + 1, cut, start, indexMedian, numEleSx, k, 0, node->region);
+        node->left = buildTree(ds, indexSorted, liv + 1, start, indexMedian, numEleSx, k, 0, node->region);
         return node;
     }
     else
     {
-        node->left = buildTree(ds, indexSorted, liv + 1, cut, start, indexMedian, numEleSx, k, 0, node->region);
-        node->right = buildTree(ds, indexSorted, liv + 1, cut, indexMedian + 1, end, numEleDx, k, 1, node->region);
+        node->left = buildTree(ds, indexSorted, liv + 1, start, indexMedian, numEleSx, k, 0, node->region);
+        node->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1, node->region);
         return node;
     }
 }
@@ -344,8 +345,8 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
     int numEleSx = indexMedian;
     int numEleDx = end - indexMedian - 1;
 
-    root->left = buildTree(ds, indexSorted, liv + 1, cut, 0, indexMedian, numEleSx, k, 0, root->region);
-    root->right = buildTree(ds, indexSorted, liv + 1, cut, indexMedian + 1, end, numEleDx, k, 1, root->region);
+    root->left = buildTree(ds, indexSorted, liv + 1, 0, indexMedian, numEleSx, k, 0, root->region);
+    root->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1, root->region);
 
     return root;
 }
@@ -353,7 +354,7 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
 float *findRegion(MATRIX ds, int n, int k)
 {
     float *region = (float *)get_block(sizeof(float), 2 * k);
-    float h_min, h_max;
+    float h_min = 0, h_max = 0;
     int j, i;
     for (j = 0; j < k; j++)
     {
@@ -429,58 +430,55 @@ float calcolaT(float *vect, int numEle)
 float norma(float *vect, int numEle)
 {
     float acc = 0;
+    acc = calcolaTAss_64(vect, numEle);
     // for (int i = 0; i < numEle; i++)
     // {
     //     acc += vect[i] * vect[i];
     // }
-    acc = calcolaTAss_64(vect, numEle);
-
     return sqrt(acc);
 }
 
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 {
-    int i, j;
-    float sum = 0;
-    // memset(v, 0, sizeof(float) * k);
-    // prodMatriceTrasAss(ds, v, u, numEleU, k);
-    for (i = 0; i < k; i++)
-    {
-        sum = 0;
-        for (j = 0; j < numEleU; j++)
-        {
-            sum += ds[j * k + i] * u[j];
-        }
-        v[i] = sum;
-    }
+    memset(v, 0, sizeof(float) * k);
+    prodMatriceTrasAss_64(ds, u, v, numEleU, k);
+
+    // int i, j;
+    // float sum = 0;
+    // for (i = 0; i < k; i++)
+    // {
+    //     sum = 0;
+    //     for (j = 0; j < numEleU; j++)
+    //     {
+    //         sum += ds[j * k + i] * u[j];
+    //     }
+    //     v[i] = sum;
+    // }
 }
 
 void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k)
 {
-    int i, j;
-    float sum = 0;
-
-    // prodottoMatriceAss(ds, v, u, rigaDS, k);
-    for (i = 0; i < rigaDS; i++)
-    {
-        sum = 0;
-        for (j = 0; j < k; j++)
-        {
-            sum += ds[i * k + j] * v[j];
-        }
-        u[i] = sum;
-    }
+    prodMatriceAss_64(ds, u, v, rigaDS, k);
+    // int i, j;
+    // float sum = 0;
+    // for (i = 0; i < rigaDS; i++)
+    // {
+    //     sum = 0;
+    //     for (j = 0; j < k; j++)
+    //     {
+    //         sum += ds[i * k + j] * v[j];
+    //     }
+    //     u[i] = sum;
+    // }
 }
 
 void dividi(float *vect, int numEle, float value)
 {
 
-    int i;
-    for (i = 0; i < numEle; i++)
+    for (int i = 0; i < numEle; i++)
     {
         vect[i] = vect[i] / value;
     }
-    dividiAss64(vect, numEle, &value);
 }
 
 void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
@@ -535,7 +533,7 @@ void pca(params *input)
     {
 
         diff = 0, t = 0, t1 = 0;
-        int contatore = 0;
+        // int contatore = 0;
 
         do
         {
@@ -543,20 +541,20 @@ void pca(params *input)
 
             t = calcolaT(u, input->n);
             // dividi(v, input->k, t);
-            dividiAss64(v, input->k, &t);
+            dividiAss_64(v, input->k, &t);
             norm = norma(v, input->k);
 
             // dividi(v, input->k, norm);
-            dividiAss64(v, input->k, &norm);
+            dividiAss_64(v, input->k, &norm);
 
             prodottoMatrice(u, input->ds, input->n, v, input->k);
             tempV = calcolaT(v, input->k);
             // dividi(u, input->n, tempV);
-            dividiAss64(u, input->n, &tempV);
+            dividiAss_64(u, input->n, &tempV);
 
             t1 = calcolaT(u, input->n);
 
-            contatore++;
+            // contatore++;
 
             diff = t1 - t;
             if (diff < 0)
@@ -586,7 +584,6 @@ void pca(params *input)
     input->ds = input->U;
     float *newQS = calcoloQ(input->qs, input->V, input->nq, input->k, input->h, input->n);
     input->k = input->h;
-
     free_block(input->qs);
     input->qs = newQS;
 }
@@ -628,34 +625,31 @@ float distance(float *h, MATRIX qs, int id_qs, int k, float *p)
         else
             p[i] = qs[k * id_qs + i];
     }
-    float temp = euclidean_distance(qs, id_qs, p, 0, k);
+    float temp = euclideanDistance(qs, id_qs, p, 0, k);
     return temp;
 }
 
-float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
+float euclideanDistance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
 {
     float res = 0;
-    float somma = 0;
+    // float somma = 0;
     // for (; i < k; i++)
     // {
     //     somma = somma + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
     // }
 
-    res = euc_dist_64(ds, qs, k);
+    res = euclideanDistanceAss_64(&ds[id_ds * k], &qs[id_qs * k], k);
 
-    return sqrt(res);
-    // return res;
+    return res;
 }
 
 int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float r, int k, int n, int *list, float *point, int *nQA)
 {
     if (tree == NULL || distance(tree->region, qs, id_qs, k, point) > r)
     {
-        // printf("stop  ");
         return 0;
     }
-
-    if (euclidean_distance(qs, id_qs, ds, tree->indexMedianPoint, k) <= r)
+    if (euclideanDistance(qs, id_qs, ds, tree->indexMedianPoint, k) <= r)
     {
         list[id_qs * n + indexList] = tree->indexMedianPoint;
         indexList++;
@@ -678,9 +672,9 @@ int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float 
 void range_query(params *input)
 {
 
-    input->QA = (int *)get_block(sizeof(int), input->n * input->nq);
+    input->QA = (int *)_mm_malloc(sizeof(int) * input->n * input->nq, 32);
     float *point = get_block(sizeof(float), input->k);
-    if (input->QA == NULL)
+    if (input->QA == NULL || point == NULL)
     {
         printf("\nNO MEMORIA");
         exit(1);
@@ -879,7 +873,6 @@ int main(int argc, char const *argv[])
         pca(input);
         t = clock() - t;
         time = ((float)t) / CLOCKS_PER_SEC;
-        printf("\n %s \n", dsname);
         sprintf(fname, "%s.U", dsname);
         sprintf(fname, "%s.V", dsname);
     }
