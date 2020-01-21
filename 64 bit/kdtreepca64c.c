@@ -31,9 +31,8 @@ int indexList = 0;
 // funzioni Assembly  AVX
 extern float euclideanDistanceAss_64(MATRIX ds, MATRIX qs, int k);
 extern float calcolaTAss_64(float *vect, int numEle);
-
 extern void dividiAss_64(float *vett, int numEle, float *value);
-extern void aggiornaDatasetAss_64(MATRIX ds, float *u, float *v, int rigaDs, int k);
+extern void aggiornaDatasetAss_64(MATRIX ds, float *u, float *v, int n, int k);
 extern void prodMatriceAss_64(float *ds, float *u, float *v, int n, int k);
 extern void prodMatriceTrasAss_64(float *ds, float *u, float *v, int n, int k);
 
@@ -71,7 +70,7 @@ struct kdtree_node
 
 void *get_block(int size, int elements)
 {
-    return _mm_malloc(elements * size, 16);
+    return _mm_malloc(elements * size, 32);
 }
 
 void free_block(void *p)
@@ -81,7 +80,7 @@ void free_block(void *p)
 
 MATRIX alloc_matrix(int rows, int cols)
 {
-    return (MATRIX)get_block(sizeof(double), rows * cols);
+    return (MATRIX)get_block(sizeof(float), rows * cols);
 }
 
 void dealloc_matrix(MATRIX mat)
@@ -485,23 +484,23 @@ void dividi(float *vect, int numEle, float value)
 void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
 {
 
-    int i, j;
-    for (i = 0; i < n; i++)
-    {
-
-        // for (j = 0; j < k; j++)
-        // {
-        //     ds[i * k + j] -= u[i] * v[j];
-        // }
-        aggiornaDatasetAss_64(ds, u, v, i, k);
-    }
+    aggiornaDatasetAss_64(ds, u, v, n, k);
+    // int i, j;
+    // for (i = 0; i < n; i++)
+    // {
+    // for (j = 0; j < k; j++)
+    // {
+    //     ds[i * k + j] -= u[i] * v[j];
+    // }
+    // }
 }
 
 float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h, int n)
 {
     centraMatrice(q, nq, k);
     float *q1 = (float *)get_block(sizeof(float), h * nq);
-    if(q1 == NULL){
+    if (q1 == NULL)
+    {
         printf("NO MEMORIA\n");
         exit(1);
     }
@@ -934,21 +933,21 @@ int main(int argc, char const *argv[])
         if (!input->silent && input->display)
         {
             //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
-            printf("\nQuery Answer:\n");
-            for (i = 0; i < input->nq; i++)
-            {
-                for (j = 0; j < input->n; j++)
-                {
-                    if (input->QA[(i * input->n) + j] == -1)
-                        break;
-                    else
-                    {
-                        printf("query %d: [ ", i);
-                        printf("%d ]\n", input->QA[(i * input->n) + j]);
-                    }
-                }
-                // printf("\n");
-            }
+            printf("\nQuery Answer: %d\n", input->nQA);
+            // for (i = 0; i < input->nq; i++)
+            // {
+            //     for (j = 0; j < input->n; j++)
+            //     {
+            //         if (input->QA[(i * input->n) + j] == -1)
+            //             break;
+            //         else
+            //         {
+            //             printf("query %d: [ ", i);
+            //             printf("%d ]\n", input->QA[(i * input->n) + j]);
+            //         }
+            //     }
+            //     // printf("\n");
+            // }
             printf("\n");
         }
 

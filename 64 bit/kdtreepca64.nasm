@@ -277,82 +277,78 @@ calcolaTAss_64:
 
 
 global aggiornaDatasetAss_64
-; input: aggiornaDatasetAss_64(RDI = ds, RSI = u, RDX = v, RCX = rigaDs, R8 = k)
+; input: aggiornaDatasetAss_64(RDI = ds, RSI = u, RDX = v, RCX = n, R8 = k)
 aggiornaDatasetAss_64:
     
     push rbp
     mov rbp, rsp
     push rbx
 
+
+    xor     r10, r10                    ; r10 = i (0, n)
     mov     rax, r8                     ; rax = k
     sub     rax, 32                     ; rax = k - 32
-    xor     r9, r9                      ; rdi = j
-    vmovss  xmm0, [rsi+4*rcx]           ; prendo un valore di U [u + 4*i]
-    vshufps xmm0, xmm0, 0               ; riproduco 1° valore in tutto  
-    vbroadcastss    ymm0, [rsi+4*rcx]   ; riproduco [u + 4*i] in tutto ymm0
-    mov      rbx, rcx                   ; rbx = i
-    imul     rbx, r8                    ; rbx = i*k
-    imul     rbx, 4                     ; rbx = i*k*4
-    add      rbx, rdi                   ; rbx = ds + i*k*4
-    ; mov      r10, r8
-    ; sub      r10, 8
     
-    loop32_agg:
-        cmp     r9, rax            
-        jg      loopResto_agg
+    forI_agg:
+        cmp     r10, rcx
+        je      end_agg
 
-        vmovups ymm1, [rdx+4*r9]          ; [v + 4*j]
-        vmulps  ymm1, ymm0              
-        vmovups ymm2, [rbx+4*r9]          ; [ds + i*4*k + 4*j]
-        vsubps  ymm2, ymm1
-        vmovups [rbx+4*r9], ymm2          ; store in ds
+        xor     r9, r9                      ; rdi = j
+        vmovss  xmm0, [rsi+4*r10]           ; prendo un valore di U [u + 4*i]
+        vshufps xmm0, xmm0, 0               ; riproduco 1° valore in tutto  
+        vbroadcastss    ymm0, [rsi+4*r10]   ; riproduco [u + 4*i] in tutto ymm0
+        mov      rbx, r10                   ; rbx = i
+        imul     rbx, r8                    ; rbx = i*k
+        imul     rbx, 4                     ; rbx = i*k*4
+        add      rbx, rdi                   ; rbx = ds + i*k*4
+        
+        loopJ32_agg:
+            cmp     r9, rax            
+            jg      loopJResto_agg
 
-        vmovups ymm1, [rdx+4*r9+32]       ; [v + 4*j]
-        vmulps  ymm1, ymm0              
-        vmovups ymm2, [rbx+4*r9+32]       ; [ds + i*4*k + 4*j]
-        vsubps  ymm2, ymm1
-        vmovups [rbx+4*r9+32], ymm2       ; store in ds
+            vmovups ymm1, [rdx+4*r9]          ; [v + 4*j]
+            vmulps  ymm1, ymm0              
+            vmovups ymm2, [rbx+4*r9]          ; [ds + i*4*k + 4*j]
+            vsubps  ymm2, ymm1
+            vmovups [rbx+4*r9], ymm2          ; store in ds
 
-        vmovups ymm1, [rdx+4*r9+64]       ; [v + 4*j]
-        vmulps  ymm1, ymm0              
-        vmovups ymm2, [rbx+4*r9+64]       ; [ds + i*4*k + 4*j]
-        vsubps  ymm2, ymm1
-        vmovups [rbx+4*r9+64], ymm2       ; store in ds
+            vmovups ymm1, [rdx+4*r9+32]       ; [v + 4*j]
+            vmulps  ymm1, ymm0              
+            vmovups ymm2, [rbx+4*r9+32]       ; [ds + i*4*k + 4*j]
+            vsubps  ymm2, ymm1
+            vmovups [rbx+4*r9+32], ymm2       ; store in ds
 
-        vmovups ymm1, [rdx+4*r9+96]       ; [v + 4*j]
-        vmulps  ymm1, ymm0              
-        vmovups ymm2, [rbx+4*r9+96]       ; [ds + i*4*k + 4*j]
-        vsubps  ymm2, ymm1
-        vmovups [rbx+4*r9+96], ymm2       ; store in ds
+            vmovups ymm1, [rdx+4*r9+64]       ; [v + 4*j]
+            vmulps  ymm1, ymm0              
+            vmovups ymm2, [rbx+4*r9+64]       ; [ds + i*4*k + 4*j]
+            vsubps  ymm2, ymm1
+            vmovups [rbx+4*r9+64], ymm2       ; store in ds
 
-        add     r9, 32
-        jmp     loop32_agg
+            vmovups ymm1, [rdx+4*r9+96]       ; [v + 4*j]
+            vmulps  ymm1, ymm0              
+            vmovups ymm2, [rbx+4*r9+96]       ; [ds + i*4*k + 4*j]
+            vsubps  ymm2, ymm1
+            vmovups [rbx+4*r9+96], ymm2       ; store in ds
 
-    ; loop8_agg:
-    ;     cmp     r9, r10
-    ;     jg      loopResto_agg
+            add     r9, 32
+            jmp     loopJ32_agg
 
-    ;     vmovups ymm1, [rdx+4*r9]           ; [v + 4*j]
-    ;     vmulps  ymm1, ymm0              
-    ;     vmovups ymm2, [rbx+4*r9]           ; [ds + i*4*k + 4*j]
-    ;     vsubps  ymm2, ymm1
-    ;     vmovups [rbx+4*r9], ymm2           ; store in ds
+        loopJResto_agg:
+            cmp     r9, r8
+            jge     endForI_agg
 
-    ;     add     r9, 8
-    ;     jmp     loop8_agg
+            vmovss  xmm1, [rdx+4*r9]        ; [v + 4*j]
+            vmulss  xmm1, xmm0
+            vmovss  xmm2, [rbx+4*r9]        ; [ds + i*4*k + 4*j]
+            vsubss  xmm2, xmm1
+            vmovss  [rbx+4*r9], xmm2        ; store in ds
 
-    loopResto_agg:
-        cmp     r9, r8
-        jge     end_agg
-
-        vmovss  xmm1, [rdx+4*r9]        ; [v + 4*j]
-        vmulss  xmm1, xmm0
-        vmovss  xmm2, [rbx+4*r9]        ; [ds + i*4*k + 4*j]
-        vsubss  xmm2, xmm1
-        vmovss  [rbx+4*r9], xmm2        ; store in ds
-
-        inc     r9
-        jmp     loopResto_agg
+            inc     r9
+            jmp     loopJResto_agg
+    
+    endForI_agg:
+        inc     r10
+        jmp     forI_agg
 
     end_agg:
         pop	rbx

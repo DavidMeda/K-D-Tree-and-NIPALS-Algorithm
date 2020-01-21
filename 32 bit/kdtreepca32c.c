@@ -28,9 +28,9 @@ void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v);
 float *calcoloQ(MATRIX, MATRIX, int, int, int);
 int indexList = 0;
 
-extern void euclideanDistanceAss(MATRIX, int, MATRIX, int, int, float *);
+extern void euc_dist(MATRIX, int, MATRIX, int, int, float *);
 extern void calcolaTAss(float *vect, int numEle, float *result);
-extern void aggiornaDatasetAss(float *, float *, float *, int, int);
+extern void aggiornaDatasetAss(float *ds, float *u, float *v, int n, int k);
 extern void dividiAss(float *, int, float);
 extern void prodottoMatriceAss(float *ds, float *v, float *u, int n, int k);
 extern void prodMatriceTrasAss(float *ds, float *v, float *u, int n, int k);
@@ -486,17 +486,16 @@ void dividi(float *vect, int numEle, float value)
 
 void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
 {
+    aggiornaDatasetAss(ds, u, v, n, k);
 
-    int i, j;
-    for (i = 0; i < n; i++)
-    {
-
+    // int i, j;
+    // for (i = 0; i < n; i++)
+    // {
         // for (j = 0; j < k; j++)
         // {
         //     ds[i * k + j] -= u[i] * v[j];
         // }
-        aggiornaDatasetAss(ds, u, v, i, k);
-    }
+    // }
 }
 
 float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h)
@@ -633,7 +632,6 @@ void kdtree(params *input)
     input->kdtree = buildTreeRoot(input->ds, indexSorted, 0, input->n, input->k);
 
     free_block(indexSorted);
-    // printTree(input->kdtree);
 }
 
 /*  METODI RANGE QUERY
