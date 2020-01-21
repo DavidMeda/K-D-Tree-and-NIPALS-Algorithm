@@ -52,6 +52,7 @@ extern free_block
 ; ------------------------------------------------------------
 
 
+
 global euclideanDistanceAss_64
 
 ; input: euclideanDistance_64(rdi=ds, rsi=qs, rdx=k);
@@ -157,7 +158,7 @@ dividiAss_64:
 
 	loop32_div:
 		cmp		rax, rbx
-		jg		BloopResto_div
+		jg		loopResto_div
 
 		vmovups	ymm1, [rdi+rax*4]		; [vect + i*4]
 		vdivps	ymm1, ymm0				; [vect + i*4] / value
@@ -178,8 +179,8 @@ dividiAss_64:
 		add 	rax, 32
 		jmp		loop32_div
 
-	BloopResto_div:
-		vextractf128 xmm0, ymm0, 0      ; estraggo parte bassa ymm0 in xmm0
+	; BloopResto_div:
+	; 	vextractf128 xmm0, ymm0, 0      ; estraggo parte bassa ymm0 in xmm0
 
 	loopResto_div:
 		cmp		rax, rsi		        ; rax == numElevett
@@ -214,82 +215,7 @@ calcolaTAss_64:
 
     loop32_cal:
         cmp     rax, rbx
-        jg      Bloop8_cal
-
-        vmovups ymm1, [rdi+4*rax]      ; prendo [vect + 4*i]
-        vmovups ymm2, [rdi+4*rax+32]   ; prendo [vect + 4*i]
-        vmovups ymm3, [rdi+4*rax+64]   ; prendo [vect + 4*i]
-        vmovups ymm4, [rdi+4*rax+96]   ; prendo [vect + 4*i]
-
-        vmulps  ymm1, ymm1             ; quadrato dei valori
-        vmulps  ymm2, ymm2
-        vmulps  ymm3, ymm3
-        vmulps  ymm4, ymm4
-
-        vaddps  ymm0, ymm1
-        vaddps  ymm0, ymm2              ; somme parziali
-        vaddps  ymm0, ymm3
-        vaddps  ymm0, ymm4
-
-        add     rax, 32
-        jmp     loop32_cal
-
-    Bloop8_cal:
-        mov     rbx, rsi                ; rbx = numEle
-        sub     rbx, 8                  ; rbx = numEle - 8
-
-    loop8_cal:
-        cmp     rax, rbx
         jg      BloopResto_cal
-
-        vmovups ymm1, [rdi+4*rax]       ; prendo [vect + 4*i]
-        vmulps  ymm1, ymm1              ; quadrato dei valori
-        vaddps  ymm0, ymm1              ; somme parziali
-
-        add     rax, 8
-        jmp     loop8_cal
-
-    BloopResto_cal:
-        vhaddps ymm0, ymm0              ; riduco la somma a un valore solo
-        vhaddps ymm0, ymm0      
-        vhaddps ymm0, ymm0      
-        vextractf128 xmm0, ymm0, 0      ; copio somma parziale in xmm0
-
-    loopResto_cal:
-        cmp     rax, rsi
-        je      end_cal
-
-        vmovss  xmm1, [rdi+4*rax]       ; prendo 1 valore [vect + 4*i]
-        vmulss  xmm1, xmm1              ; quadrato dei valore
-        vaddss  xmm0, xmm1              ; somma parziale
-
-        inc     rax
-        jmp     loopResto_cal
-
-    end_cal:
-        pop	rbx
-		mov rsp, rbp
-		pop rbp
-		ret
-
-
-global normaAss_64
-; input: calcolaTAss_64( rdi= vect, rsi= numEle) 
-; output: in xmm0 return radice sommatoria dei quadrati
-
-normaAss_64:
-    push rbp
-    mov rbp, rsp
-    push rbx
-
-    mov     rbx, rsi        ; rbx = numEle
-    sub     rbx, 32         ; rbx = numEle - 32
-    xor     rax, rax        ; rax = i var iterativa
-    vxorps  ymm0, ymm0      ; azzero registro per le somme parziali
-
-    loop32_norma:
-        cmp     rax, rbx
-        jg      hadd_norma
 
         vmovups ymm1, [rdi+4*rax]      ; prendo [vect + 4*i]
         vmovups ymm2, [rdi+4*rax+32]   ; prendo [vect + 4*i]
@@ -324,29 +250,30 @@ normaAss_64:
     ;     add     rax, 8
     ;     jmp     loop8_cal
 
-    hadd_norma:
+    BloopResto_cal:
         vhaddps ymm0, ymm0              ; riduco la somma a un valore solo
         vhaddps ymm0, ymm0      
         vhaddps ymm0, ymm0      
         ; vextractf128 xmm0, ymm0, 0      ; copio somma parziale in xmm0
 
-    loopResto_norma:
+    loopResto_cal:
         cmp     rax, rsi
-        je      end_norma
+        je      end_cal
 
         vmovss  xmm1, [rdi+4*rax]       ; prendo 1 valore [vect + 4*i]
         vmulss  xmm1, xmm1              ; quadrato dei valore
         vaddss  xmm0, xmm1              ; somma parziale
 
         inc     rax
-        jmp     loopResto_norma
+        jmp     loopResto_cal
 
-    end_norma:
-        vsqrtss xmm0, xmm0
+    end_cal:
         pop	rbx
 		mov rsp, rbp
 		pop rbp
 		ret
+
+
 
 
 global aggiornaDatasetAss_64
@@ -367,12 +294,12 @@ aggiornaDatasetAss_64:
     imul     rbx, r8                    ; rbx = i*k
     imul     rbx, 4                     ; rbx = i*k*4
     add      rbx, rdi                   ; rbx = ds + i*k*4
-    mov      r10, r8
-    sub      r10, 8
+    ; mov      r10, r8
+    ; sub      r10, 8
     
     loop32_agg:
         cmp     r9, rax            
-        jg      loop8_agg
+        jg      loopResto_agg
 
         vmovups ymm1, [rdx+4*r9]          ; [v + 4*j]
         vmulps  ymm1, ymm0              
@@ -401,18 +328,18 @@ aggiornaDatasetAss_64:
         add     r9, 32
         jmp     loop32_agg
 
-    loop8_agg:
-        cmp     r9, r10
-        jg      loopResto_agg
+    ; loop8_agg:
+    ;     cmp     r9, r10
+    ;     jg      loopResto_agg
 
-        vmovups ymm1, [rdx+4*r9]           ; [v + 4*j]
-        vmulps  ymm1, ymm0              
-        vmovups ymm2, [rbx+4*r9]           ; [ds + i*4*k + 4*j]
-        vsubps  ymm2, ymm1
-        vmovups [rbx+4*r9], ymm2           ; store in ds
+    ;     vmovups ymm1, [rdx+4*r9]           ; [v + 4*j]
+    ;     vmulps  ymm1, ymm0              
+    ;     vmovups ymm2, [rbx+4*r9]           ; [ds + i*4*k + 4*j]
+    ;     vsubps  ymm2, ymm1
+    ;     vmovups [rbx+4*r9], ymm2           ; store in ds
 
-        add     r9, 8
-        jmp     loop8_agg
+    ;     add     r9, 8
+    ;     jmp     loop8_agg
 
     loopResto_agg:
         cmp     r9, r8
@@ -481,7 +408,7 @@ prodMatriceAss_64:
             vhaddps ymm0, ymm0
             vhaddps ymm0, ymm0
             vhaddps ymm0, ymm0
-            vextractf128 xmm0, ymm0, 0  ; copio somma parziale in xmm0
+            ; vextractf128 xmm0, ymm0, 0  ; copio somma parziale in xmm0
         
         loopResto_prod:
             cmp     r10, r8

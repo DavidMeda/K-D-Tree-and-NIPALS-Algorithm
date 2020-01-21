@@ -31,6 +31,7 @@ int indexList = 0;
 // funzioni Assembly  AVX
 extern float euclideanDistanceAss_64(MATRIX ds, MATRIX qs, int k);
 extern float calcolaTAss_64(float *vect, int numEle);
+
 extern void dividiAss_64(float *vett, int numEle, float *value);
 extern void aggiornaDatasetAss_64(MATRIX ds, float *u, float *v, int rigaDs, int k);
 extern void prodMatriceAss_64(float *ds, float *u, float *v, int n, int k);
@@ -499,7 +500,11 @@ void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
 float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h, int n)
 {
     centraMatrice(q, nq, k);
-    float *q1 = get_block(sizeof(float), h * nq);
+    float *q1 = (float *)get_block(sizeof(float), h * nq);
+    if(q1 == NULL){
+        printf("NO MEMORIA\n");
+        exit(1);
+    }
     moltiplica(q, V, q1, nq, k, h);
     return q1;
 }
@@ -518,7 +523,7 @@ void pca(params *input)
 
     if (input->V == NULL || input->U == NULL || u == NULL || v == NULL)
     {
-        printf("\nNo MEMORIA");
+        printf("\nNo MEMORIA\n");
         exit(1);
     }
     int i;
@@ -676,7 +681,7 @@ void range_query(params *input)
     float *point = get_block(sizeof(float), input->k);
     if (input->QA == NULL || point == NULL)
     {
-        printf("\nNO MEMORIA");
+        printf("\nNO MEMORIA\n");
         exit(1);
     }
     int i;
