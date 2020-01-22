@@ -14,7 +14,7 @@ int partition(MATRIX, int *, int, int, int, int);
 void quicksort(MATRIX, int *, int, int, int, int);
 int findMedian(MATRIX, int *, int, int, int, int);
 struct kdtree_node *buildTreeRoot(MATRIX, int *, int, int, int);
-struct kdtree_node *buildTree(MATRIX, int *, int, int, int, int, int, int, float *);
+struct kdtree_node *buildTree(MATRIX, int *, int, int, int, int, int, float *);
 float *findRegion(MATRIX, int, int);
 float euclideanDistance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k);
 int rangeQuery(MATRIX, struct kdtree_node *, MATRIX, int, float, int, int, int *, float *, int *);
@@ -63,7 +63,6 @@ struct kdtree_node
 {
     float medianCoordinate; //coordinata cut per il punto mediano
     int indexMedianPoint;
-    int numPoint;
     float *region;
     struct kdtree_node *left, *right;
 };
@@ -273,7 +272,7 @@ int findMedian(MATRIX dataset, int *indexSorted, int start, int indexMedian, int
     return indexMedian;
 }
 
-struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, int end, int numEle, int k, int type, float *regionp)
+struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, int end, int numEle, int k, float *regionp)
 {
     if (numEle == 0)
         return NULL;
@@ -287,7 +286,6 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     node->region[2 * (oldCut)] = ds[indexSorted[start] * k + (oldCut)];
     node->region[2 * (oldCut) + 1] = ds[indexSorted[end - 1] * k + (oldCut)];
 
-    node->numPoint = numEle;
     quicksort(ds, indexSorted, cut, k, start, end);
 
     int indexMedian = findMedian(ds, indexSorted, start, start + ((end - 1 - start) / 2), k, cut);
@@ -307,19 +305,19 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     else if (numEleSx == 0)
     {
         node->left = NULL;
-        node->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1, node->region);
+        node->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, node->region);
         return node;
     }
     else if (numEleDx == 0)
     {
         node->right = NULL;
-        node->left = buildTree(ds, indexSorted, liv + 1, start, indexMedian, numEleSx, k, 0, node->region);
+        node->left = buildTree(ds, indexSorted, liv + 1, start, indexMedian, numEleSx, k, node->region);
         return node;
     }
     else
     {
-        node->left = buildTree(ds, indexSorted, liv + 1, start, indexMedian, numEleSx, k, 0, node->region);
-        node->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1, node->region);
+        node->left = buildTree(ds, indexSorted, liv + 1, start, indexMedian, numEleSx, k, node->region);
+        node->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, node->region);
         return node;
     }
 }
@@ -341,12 +339,11 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
     root->medianCoordinate = ds[indexSorted[indexMedian] * k + cut]; //valore di coordinata del punto mediano
     root->indexMedianPoint = indexSorted[indexMedian];               //indice del punto mediano nel dataset
     root->region = findRegion(ds, end, k);
-    root->numPoint = end;
     int numEleSx = indexMedian;
     int numEleDx = end - indexMedian - 1;
 
-    root->left = buildTree(ds, indexSorted, liv + 1, 0, indexMedian, numEleSx, k, 0, root->region);
-    root->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, 1, root->region);
+    root->left = buildTree(ds, indexSorted, liv + 1, 0, indexMedian, numEleSx, k, root->region);
+    root->right = buildTree(ds, indexSorted, liv + 1, indexMedian + 1, end, numEleDx, k, root->region);
 
     return root;
 }
