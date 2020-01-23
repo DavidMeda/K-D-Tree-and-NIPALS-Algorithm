@@ -25,12 +25,12 @@ void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k);
 float norma(float *vect, int numEle);
 void dividi(float *vect, int numEle, float value);
 void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v);
-float *calcoloQ(MATRIX, MATRIX, int, int, int, int);
+float *calcoloQ(MATRIX, MATRIX, int, int, int);
 int indexList = 0;
 
 // funzioni Assembly  AVX
-extern float euclideanDistanceAss_64(MATRIX ds, MATRIX qs, int k);
-extern float calcolaTAss_64(float *vect, int numEle);
+// extern float euclideanDistanceAss_64(MATRIX ds, MATRIX qs, int k);
+// extern float calcolaTAss_64(float *vect, int numEle);
 extern void dividiAss_64(float *vett, int numEle, float *value);
 extern void aggiornaDatasetAss_64(MATRIX ds, float *u, float *v, int n, int k);
 extern void prodMatriceAss_64(float *ds, float *u, float *v, int n, int k);
@@ -416,22 +416,22 @@ void centraMatrice(MATRIX ds, int n, int k)
 float calcolaT(float *vect, int numEle)
 {
     float res = 0;
-    // for (int i = 0; i < numEle; i++)
-    // {
-    //     res += (vect[i]) * (vect[i]);
-    // }
-    res = calcolaTAss_64(vect, numEle);
+    for (int i = 0; i < numEle; i++)
+    {
+        res += (vect[i]) * (vect[i]);
+    }
+    // res = calcolaTAss_64(vect, numEle);
     return res;
 }
 
 float norma(float *vect, int numEle)
 {
     float acc = 0;
-    acc = calcolaTAss_64(vect, numEle);
-    // for (int i = 0; i < numEle; i++)
-    // {
-    //     acc += vect[i] * vect[i];
-    // }
+    // acc = calcolaTAss_64(vect, numEle);
+    for (int i = 0; i < numEle; i++)
+    {
+        acc += vect[i] * vect[i];
+    }
     return sqrt(acc);
 }
 
@@ -439,7 +439,6 @@ void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 {
     memset(v, 0, sizeof(float) * k);
     prodMatriceTrasAss_64(ds, u, v, numEleU, k);
-
     // int i, j;
     // float sum = 0;
     // for (i = 0; i < k; i++)
@@ -485,14 +484,14 @@ void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
     // int i, j;
     // for (i = 0; i < n; i++)
     // {
-    // for (j = 0; j < k; j++)
-    // {
-    //     ds[i * k + j] -= u[i] * v[j];
-    // }
+    //     for (j = 0; j < k; j++)
+    //     {
+    //         ds[i * k + j] -= u[i] * v[j];
+    //     }
     // }
 }
 
-float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h, int n)
+float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h)
 {
     centraMatrice(q, nq, k);
     float *q1 = (float *)get_block(sizeof(float), h * nq);
@@ -528,13 +527,12 @@ void pca(params *input)
     {
         u[i] = input->ds[i * input->k];
     }
-    float theta = 1 * exp(-8);
+    float theta = 0.000335463;
     float norm = 0, tempV = 0, diff = 0, t = 0, t1 = 0;
     for (i = 0; i < input->h; i++)
     {
 
         diff = 0, t = 0, t1 = 0;
-        // int contatore = 0;
 
         do
         {
@@ -555,8 +553,6 @@ void pca(params *input)
 
             t1 = calcolaT(u, input->n);
 
-            // contatore++;
-
             diff = t1 - t;
             if (diff < 0)
                 diff = diff * -1;
@@ -576,14 +572,14 @@ void pca(params *input)
         }
     }
 
-    // save_matrix(input->V, input->h, input->k, "MatrixV");
-    // save_matrix(input->U, input->h, input->n, "MatrixU");
+    save_matrix(input->V, input->h, input->k, "MatrixV_64Ass6");
+    save_matrix(input->U, input->h, input->n, "MatrixU_64Ass6");
 
     free_block(u);
     free_block(v);
     free_block(input->ds);
     input->ds = input->U;
-    float *newQS = calcoloQ(input->qs, input->V, input->nq, input->k, input->h, input->n);
+    float *newQS = calcoloQ(input->qs, input->V, input->nq, input->k, input->h);
     input->k = input->h;
     free_block(input->qs);
     input->qs = newQS;
@@ -639,7 +635,7 @@ float euclideanDistance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
     //     somma = somma + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
     // }
 
-    res = euclideanDistanceAss_64(&ds[id_ds * k], &qs[id_qs * k], k);
+    // res = euclideanDistanceAss_64(&ds[id_ds * k], &qs[id_qs * k], k);
 
     return res;
 }

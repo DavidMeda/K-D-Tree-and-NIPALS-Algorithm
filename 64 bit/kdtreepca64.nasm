@@ -199,79 +199,79 @@ dividiAss_64:
 		pop rbp
 		ret
 	
-global calcolaTAss_64
-; input: calcolaTAss_64( rdi= vect, rsi= numEle) 
-; output: in xmm0 return sommatoria dei quadrati
+; global calcolaTAss_64
+; ; input: calcolaTAss_64( rdi= vect, rsi= numEle) 
+; ; output: in xmm0 return sommatoria dei quadrati
 
-calcolaTAss_64:
-    push rbp
-    mov rbp, rsp
-    push rbx
+; calcolaTAss_64:
+;     push rbp
+;     mov rbp, rsp
+;     push rbx
 
-    mov     rbx, rsi        ; rbx = numEle
-    sub     rbx, 32         ; rbx = numEle - 32
-    xor     rax, rax        ; rax = i var iterativa
-    vxorps  ymm0, ymm0      ; azzero registro per le somme parziali
+;     mov     rbx, rsi        ; rbx = numEle
+;     sub     rbx, 32         ; rbx = numEle - 32
+;     xor     rax, rax        ; rax = i var iterativa
+;     vxorps  ymm0, ymm0      ; azzero registro per le somme parziali
 
-    loop32_cal:
-        cmp     rax, rbx
-        jg      BloopResto_cal
+;     loop32_cal:
+;         cmp     rax, rbx
+;         jg      BloopResto_cal
 
-        vmovups ymm1, [rdi+4*rax]      ; prendo [vect + 4*i]
-        vmovups ymm2, [rdi+4*rax+32]   ; prendo [vect + 4*i]
-        vmovups ymm3, [rdi+4*rax+64]   ; prendo [vect + 4*i]
-        vmovups ymm4, [rdi+4*rax+96]   ; prendo [vect + 4*i]
+;         vmovups ymm1, [rdi+4*rax]      ; prendo [vect + 4*i]
+;         vmovups ymm2, [rdi+4*rax+32]   ; prendo [vect + 4*i]
+;         vmovups ymm3, [rdi+4*rax+64]   ; prendo [vect + 4*i]
+;         vmovups ymm4, [rdi+4*rax+96]   ; prendo [vect + 4*i]
 
-        vmulps  ymm1, ymm1             ; quadrato dei valori
-        vmulps  ymm2, ymm2
-        vmulps  ymm3, ymm3
-        vmulps  ymm4, ymm4
+;         vmulps  ymm1, ymm1             ; quadrato dei valori
+;         vmulps  ymm2, ymm2
+;         vmulps  ymm3, ymm3
+;         vmulps  ymm4, ymm4
 
-        vaddps  ymm0, ymm1
-        vaddps  ymm0, ymm2              ; somme parziali
-        vaddps  ymm0, ymm3
-        vaddps  ymm0, ymm4
+;         vaddps  ymm0, ymm1
+;         vaddps  ymm0, ymm2              ; somme parziali
+;         vaddps  ymm0, ymm3
+;         vaddps  ymm0, ymm4
 
-        add     rax, 32
-        jmp     loop32_cal
+;         add     rax, 32
+;         jmp     loop32_cal
 
-    ; Bloop8_cal:
-    ;     mov     rbx, rsi                ; rbx = numEle
-    ;     sub     rbx, 8                  ; rbx = numEle - 8
+;     ; Bloop8_cal:
+;     ;     mov     rbx, rsi                ; rbx = numEle
+;     ;     sub     rbx, 8                  ; rbx = numEle - 8
 
-    ; loop8_cal:
-    ;     cmp     rax, rbx
-    ;     jg      BloopResto_cal
+;     ; loop8_cal:
+;     ;     cmp     rax, rbx
+;     ;     jg      BloopResto_cal
 
-    ;     vmovups ymm1, [rdi+4*rax]       ; prendo [vect + 4*i]
-    ;     vmulps  ymm1, ymm1              ; quadrato dei valori
-    ;     vaddps  ymm0, ymm1              ; somme parziali
+;     ;     vmovups ymm1, [rdi+4*rax]       ; prendo [vect + 4*i]
+;     ;     vmulps  ymm1, ymm1              ; quadrato dei valori
+;     ;     vaddps  ymm0, ymm1              ; somme parziali
 
-    ;     add     rax, 8
-    ;     jmp     loop8_cal
+;     ;     add     rax, 8
+;     ;     jmp     loop8_cal
 
-    BloopResto_cal:
-        vhaddps ymm0, ymm0              ; riduco la somma a un valore solo
-        vhaddps ymm0, ymm0      
-        vhaddps ymm0, ymm0      
-        ; vextractf128 xmm0, ymm0, 0      ; copio somma parziale in xmm0
+;     BloopResto_cal:
+;         vhaddps ymm0, ymm0              ; riduco la somma a un valore solo
+;         vhaddps ymm0, ymm0      
+;         vhaddps ymm0, ymm0      
+;         ; vextractf128 xmm0, ymm0, 0      ; copio somma parziale in xmm0
 
-    loopResto_cal:
-        cmp     rax, rsi
-        je      end_cal
+;     loopResto_cal:
+;         cmp     rax, rsi
+;         je      end_cal
 
-        vmovss  xmm1, [rdi+4*rax]       ; prendo 1 valore [vect + 4*i]
-        vmulss  xmm1, xmm1              ; quadrato dei valore
-        vaddss  xmm0, xmm1              ; somma parziale
+;         vmovss  xmm1, [rdi+4*rax]       ; prendo 1 valore [vect + 4*i]
+;         vmulss  xmm1, xmm1              ; quadrato dei valore
+;         vaddss  xmm0, xmm1              ; somma parziale
 
-        inc     rax
-        jmp     loopResto_cal
+;         inc     rax
+;         jmp     loopResto_cal
 
-    end_cal:
-        pop	rbx
-		mov rsp, rbp
-		pop rbp
-		ret
+;     end_cal:
+;         pop	rbx
+; 		mov rsp, rbp
+; 		pop rbp
+; 		ret
 
 
 
@@ -369,7 +369,7 @@ prodMatriceAss_64:
 
     forI_prod:
         cmp     r9, rcx         ; rcx = n
-        je      end_prod
+        jge      end_prod
 
         mov     rax, r8         ; rax = k
         sub     rax, 32         ; rax = k - 32
@@ -382,19 +382,26 @@ prodMatriceAss_64:
 
         loopJ32_prod:
             cmp     r10, rax
-            jmp     hadd_prod
+            jg     hadd_prod
 
             vmovups ymm1, [r11+4*r10]       ; ymm1 [ds + 4*i*k + j*4]
-            vmulps  ymm1, [rdx+4*r10]      ; ymm1 moltiplicato [v + j*4]
+            vmovups ymm5, [rdx+4*r10]
+            vmulps  ymm1, ymm5       ; ymm1 moltiplicato [v + j*4]
             vaddps  ymm0, ymm1              ; somme parziali
+            
             vmovups ymm2, [r11+4*r10+32]       ; ymm1 [ds + 4*i*k + j*4]
-            vmulps  ymm2, [rdx+4*r10+32]      ; ymm1 moltiplicato [v + j*4]
+            vmovups ymm6,  [rdx+4*r10+32]
+            vmulps  ymm2, ymm6     ; ymm1 moltiplicato [v + j*4]
             vaddps  ymm0, ymm2              ; somme parziali
+            
             vmovups ymm3, [r11+4*r10+64]       ; ymm1 [ds + 4*i*k + j*4]
-            vmulps  ymm3, [rdx+4*r10+64]      ; ymm1 moltiplicato [v + j*4]
+            vmovups ymm7, [rdx+4*r10+64]
+            vmulps  ymm3, ymm7      ; ymm1 moltiplicato [v + j*4]
             vaddps  ymm0, ymm3              ; somme parziali
+            
             vmovups ymm4, [r11+4*r10+96]       ; ymm1 [ds + 4*i*k + j*4]
-            vmulps  ymm4, [rdx+4*r10+96]      ; ymm1 moltiplicato [v + j*4]
+            vmovups ymm8, [rdx+4*r10+96]
+            vmulps  ymm4, ymm8      ; ymm1 moltiplicato [v + j*4]
             vaddps  ymm0, ymm4              ; somme parziali
 
             add     r10, 32
@@ -408,17 +415,18 @@ prodMatriceAss_64:
         
         loopResto_prod:
             cmp     r10, r8
-            je      endFori_prod
+            jge      endFori_prod
 
-            movss   xmm1, [r11+4*r10]
-            mulss   xmm1, [rdx+4*r10]
-            addss   xmm0, xmm1
+            vmovss   xmm1, [r11+4*r10]
+            vmovss  xmm2, [rdx+4*r10]
+            vmulss   xmm1, xmm2
+            vaddss   xmm0, xmm1
 
             inc     r10
             jmp     loopResto_prod
 
     endFori_prod:
-        movss     [rsi+4*r9], xmm0    ; store in [U +4*i]
+        vmovss     [rsi+4*r9], xmm0    ; store in [U +4*i]
 
         inc     r9
         jmp     forI_prod

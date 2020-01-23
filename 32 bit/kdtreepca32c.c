@@ -29,7 +29,7 @@ float *calcoloQ(MATRIX, MATRIX, int, int, int);
 int indexList = 0;
 
 extern void euc_dist(MATRIX, int, MATRIX, int, int, float *);
-extern void calcolaTAss(float *vect, int numEle, float *result);
+// extern void calcolaTAss(float *vect, int numEle, float *result);
 extern void aggiornaDatasetAss(float *ds, float *u, float *v, int n, int k);
 extern void dividiAss(float *, int, float);
 extern void prodottoMatriceAss(float *ds, float *v, float *u, int n, int k);
@@ -179,7 +179,7 @@ void save_matrix(MATRIX a, int col, int rig, char *filename)
     for (int i = 0; i < rig * col; i++)
     {
         if (i % col == 0)
-            fprintf(fPointer, "\n");
+            fprintf(fPointer, "\n\n");
         fprintf(fPointer, " %f, ", a[i]);
     }
 
@@ -417,50 +417,46 @@ void centraMatrice(MATRIX ds, int n, int k)
 float calcolaT(float *vect, int numEle)
 {
     float res = 0;
-    // for (int i = 0; i < numEle; i++)
-    // {
-    //     res += (vect[i]) * (vect[i]);
-    // }
-    calcolaTAss(vect, numEle, &res);
+    for (int i = 0; i < numEle; i++)
+    {
+        res += (vect[i]) * (vect[i]);
+    }
     return res;
 }
 
 float norma(float *vect, int numEle)
 {
     float acc = 0;
-    // for (int i = 0; i < numEle; i++)
-    // {
-    //     acc += vect[i] * vect[i];
-    // }
-    calcolaTAss(vect, numEle, &acc);
-
+    for (int i = 0; i < numEle; i++)
+    {
+        acc += vect[i] * vect[i];
+    }
     return sqrt(acc);
 }
 
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 {
+    // memset(v, 0, sizeof(float) * k);
+    // prodMatriceTrasAss(ds, v, u, numEleU, k);
     int i, j;
     float sum = 0;
-    memset(v, 0, sizeof(float) * k);
-    prodMatriceTrasAss(ds, v, u, numEleU, k);
-    // for (i = 0; i < k; i++)
-    // {
-    //     sum = 0;
-    //     for (j = 0; j < numEleU; j++)
-    //     {
-    //         sum += ds[j * k + i] * u[j];
-    //     }
-    //     v[i] = sum;
-    // }
+    for (i = 0; i < k; i++)
+    {
+        sum = 0;
+        for (j = 0; j < numEleU; j++)
+        {
+            sum += ds[j * k + i] * u[j];
+        }
+        v[i] = sum;
+    }
 }
 
-void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k)
+void prodottoMatrice(float *u, MATRIX ds, int n, float *v, int k)
 {
-    int i, j;
-    float sum = 0;
-    prodottoMatriceAss(ds, v, u, rigaDS, k);
-
-    // for (i = 0; i < rigaDS; i++)
+    prodottoMatriceAss(ds, v, u, n, k);
+    // int i, j;
+    // float sum = 0;
+    // for (i = 0; i < n; i++)
     // {
     //     sum = 0;
     //     for (j = 0; j < k; j++)
@@ -483,16 +479,15 @@ void dividi(float *vect, int numEle, float value)
 
 void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
 {
-    aggiornaDatasetAss(ds, u, v, n, k);
-
-    // int i, j;
-    // for (i = 0; i < n; i++)
-    // {
-    // for (j = 0; j < k; j++)
-    // {
-    //     ds[i * k + j] -= u[i] * v[j];
-    // }
-    // }
+    // aggiornaDatasetAss(ds, u, v, n, k);
+    int i, j;
+    for (i = 0; i < n; i++)
+    {
+        for (j = 0; j < k; j++)
+        {
+            ds[i * k + j] -= u[i] * v[j];
+        }
+    }
 }
 
 float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h)
@@ -532,14 +527,12 @@ void pca(params *input)
     {
         u[i] = input->ds[i * input->k];
     }
-    float theta = 1 * exp(-8);
+    float theta = 0.000335463;
     float norm = 0, tempV = 0, diff = 0, t = 0, t1 = 0;
     for (i = 0; i < input->h; i++)
     {
 
         diff = 0, t = 0, t1 = 0;
-        int contatore = 0;
-        // printf("\ninizo iterazione %d ", i);
 
         do
         {
@@ -560,8 +553,6 @@ void pca(params *input)
 
             t1 = calcolaT(u, input->n);
 
-            contatore++;
-
             diff = t1 - t;
             if (diff < 0)
                 diff = diff * -1;
@@ -581,8 +572,8 @@ void pca(params *input)
         }
     }
 
-    // save_matrix(input->V, input->h, input->k, "MatrixV2");
-    // save_matrix(input->U, input->h, input->n, "MatrixU2");
+    save_matrix(input->V, input->h, input->k, "MatrixV_32Ass");
+    save_matrix(input->U, input->h, input->n, "MatrixU_32Ass");
 
     free_block(u);
     free_block(v);
@@ -592,22 +583,6 @@ void pca(params *input)
     input->k = input->h;
     free_block(input->qs);
     input->qs = newQS;
-}
-
-int conta = 0;
-void printTree(KDTREE alb)
-{
-    conta++;
-    printf("  Val alb= %f index= %d cont= %d", alb->medianCoordinate, alb->indexMedianPoint, conta);
-    // if (alb->left != NULL)
-    //     printf(" SX ");
-    // if (alb->right != NULL)
-    //     printf(" DX ");
-
-    if (alb->left != NULL)
-        printTree(alb->left);
-    if (alb->right != NULL)
-        printTree(alb->right);
 }
 
 void kdtree(params *input)
@@ -661,7 +636,7 @@ float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
     //     somma = somma + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
     // }
 
-    euc_dist(ds, id_ds, qs, id_qs, k, &res);
+    // euc_dist(ds, id_ds, qs, id_qs, k, &res);
 
     // return sqrt(somma);
     return res;
@@ -900,7 +875,6 @@ int main(int argc, char const *argv[])
             printf("Kdtree building disabled\n");
         }
     }
-    printf("Punti queryset: %d\n", input->nq);
 
     if (input->h > 0)
     {
