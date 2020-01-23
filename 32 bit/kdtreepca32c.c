@@ -431,24 +431,24 @@ float norma(float *vect, int numEle)
     {
         acc += vect[i] * vect[i];
     }
-    return sqrt(acc);
+    return sqrtf(acc);
 }
 
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 {
-    // memset(v, 0, sizeof(float) * k);
-    // prodMatriceTrasAss(ds, v, u, numEleU, k);
-    int i, j;
-    float sum = 0;
-    for (i = 0; i < k; i++)
-    {
-        sum = 0;
-        for (j = 0; j < numEleU; j++)
-        {
-            sum += ds[j * k + i] * u[j];
-        }
-        v[i] = sum;
-    }
+    memset(v, 0, sizeof(float) * k);
+    prodMatriceTrasAss(ds, v, u, numEleU, k);
+    // int i, j;
+    // float sum = 0;
+    // for (i = 0; i < k; i++)
+    // {
+    //     sum = 0;
+    //     for (j = 0; j < numEleU; j++)
+    //     {
+    //         sum += ds[j * k + i] * u[j];
+    //     }
+    //     v[i] = sum;
+    // }
 }
 
 void prodottoMatrice(float *u, MATRIX ds, int n, float *v, int k)
@@ -479,15 +479,15 @@ void dividi(float *vect, int numEle, float value)
 
 void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
 {
-    // aggiornaDatasetAss(ds, u, v, n, k);
-    int i, j;
-    for (i = 0; i < n; i++)
-    {
-        for (j = 0; j < k; j++)
-        {
-            ds[i * k + j] -= u[i] * v[j];
-        }
-    }
+    aggiornaDatasetAss(ds, u, v, n, k);
+    // int i, j;
+    // for (i = 0; i < n; i++)
+    // {
+    //     for (j = 0; j < k; j++)
+    //     {
+    //         ds[i * k + j] -= u[i] * v[j];
+    //     }
+    // }
 }
 
 float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h)
@@ -572,9 +572,8 @@ void pca(params *input)
         }
     }
 
-    save_matrix(input->V, input->h, input->k, "MatrixV_32Ass");
-    save_matrix(input->U, input->h, input->n, "MatrixU_32Ass");
-
+    // save_matrix(input->V, input->h, input->k, "MatrixV_32Ass");
+    // save_matrix(input->U, input->h, input->n, "MatrixU_32Ass");
     free_block(u);
     free_block(v);
     free_block(input->ds);
@@ -622,23 +621,19 @@ float distance(float *h, MATRIX qs, int id_qs, int k, float *p)
         else
             p[i] = qs[k * id_qs + i];
     }
-    float temp = euclidean_distance(qs, id_qs, p, 0, k);
-    return temp;
+    return euclidean_distance(qs, id_qs, p, 0, k);
+    ;
 }
 
 float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
 {
     float res = 0;
-    float somma = 0;
-
     // for (int i = 0; i < k; i++)
     // {
-    //     somma = somma + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
+    //     res = res + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
     // }
-
-    // euc_dist(ds, id_ds, qs, id_qs, k, &res);
-
-    // return sqrt(somma);
+    // return  sqrt(res);
+    euc_dist(ds, id_ds, qs, id_qs, k, &res);
     return res;
 }
 
@@ -882,7 +877,6 @@ int main(int argc, char const *argv[])
         pca(input);
         t = clock() - t;
         time = ((float)t) / CLOCKS_PER_SEC;
-        printf("\n %s \n", dsname);
         sprintf(fname, "%s.U", dsname);
         sprintf(fname, "%s.V", dsname);
     }
@@ -940,22 +934,20 @@ int main(int argc, char const *argv[])
         {
             //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
             printf("\nQuery Answer %d:\n", input->nQA);
-            // for (i = 0; i < input->nq; i++)
-            // {
-            //     printf("query %d: [ ", i);
-            //     for (j = 0; j < input->n; j++)
-            //     {
-            //         if (input->QA[(i * input->n) + j] == -1)
-            //             break;
-            //         else
-            //         {
-            //             printf("%d ", input->QA[(i * input->n) + j]);
-            //         }
-            //     }
-            //     printf("]\t");
-            //     if (i % 10 == 0)
-            //         printf("\n");
-            // }
+            for (i = 0; i < input->nq; i++)
+            {
+                for (j = 0; j < input->n; j++)
+                {
+                    if (input->QA[(i * input->n) + j] == -1)
+                        break;
+                    else
+                    {
+                        printf("[%d,  ", i);
+                        printf("%d]\n", input->QA[(i * input->n) + j]);
+                    }
+                }
+                // printf("]\n");
+            }
             printf("\n");
         }
 

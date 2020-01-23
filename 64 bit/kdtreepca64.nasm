@@ -100,26 +100,12 @@ euclideanDistanceAss_64:
         add     rax, 32
         jmp     loop32_eucl 
 
-    ; loop_q16_ecu:
-            
-    ;     cmp     rax, r11              
-    ;     jg      h_add_ecu          ; se i > k-16
+    hadd_eucl:   
 
-    ;     vmovups  ymm0, [rdi+rax*4]  
-    ;     vsubps   ymm0, [rsi+rax*4]          
-    ;     vmulps   ymm0, ymm0         
-    ;     vaddps   ymm2, ymm0          
-    ;     vmovups  ymm0, [rdi+rax*4+32]    
-    ;     vsubps   ymm0, [rsi+rax*4+32]          
-    ;     vmulps   ymm0, ymm0         
-    ;     vaddps   ymm2, ymm0          
-    ;     add rax,16
-
-    hadd_eucl:       
-        vhaddps ymm2, ymm2       ; riduco la somma a un valore solo
-        vhaddps ymm2, ymm2       ; riduco la somma a un valore solo
-		vhaddps ymm2, ymm2       ; riduco la somma a un valore solo
-        vextractf128 xmm2, ymm2, 0
+        vhaddps ymm2, ymm2
+        vhaddps ymm2, ymm2
+        vperm2f128  ymm9, ymm2, ymm2, 1
+        vaddss  xmm2, xmm9    
 
     loopResto_eucl:
         cmp     rax, rdx
@@ -178,9 +164,6 @@ dividiAss_64:
 
 		add 	rax, 32
 		jmp		loop32_div
-
-	; BloopResto_div:
-	; 	vextractf128 xmm0, ymm0, 0      ; estraggo parte bassa ymm0 in xmm0
 
 	loopResto_div:
 		cmp		rax, rsi		        ; rax == numElevett
@@ -379,6 +362,8 @@ prodMatriceAss_64:
         add     r11, rdi        ; r11 = k*i*4 + ds
         xor     r10, r10        ; r10 = k varibile ite (0,k)
         vxorps  ymm0, ymm0      ; ymm0 = azzero reg somme parziali
+        vxorps  ymm9,ymm9
+
 
         loopJ32_prod:
             cmp     r10, rax
@@ -410,9 +395,9 @@ prodMatriceAss_64:
         hadd_prod:
             vhaddps ymm0, ymm0
             vhaddps ymm0, ymm0
-            vhaddps ymm0, ymm0
-            ; vextractf128 xmm0, ymm0, 0  ; copio somma parziale in xmm0
-        
+            vperm2f128  ymm9, ymm0, ymm0, 1  ; sposto la parte alta di ymm0 in basso a ymm9 
+            vaddss  xmm0, xmm9              ; in xmm0 ci sarà la sommatoria parziale
+
         loopResto_prod:
             cmp     r10, r8
             jge      endFori_prod
