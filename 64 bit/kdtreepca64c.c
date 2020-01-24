@@ -435,35 +435,35 @@ float norma(float *vect, int numEle)
 
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 {
-    // memset(v, 0, sizeof(float) * k);
-    // prodMatriceTrasAss_64(ds, u, v, numEleU, k);
-    int i, j;
-    float sum = 0;
-    for (i = 0; i < k; i++)
-    {
-        sum = 0;
-        for (j = 0; j < numEleU; j++)
-        {
-            sum += ds[j * k + i] * u[j];
-        }
-        v[i] = sum;
-    }
+    memset(v, 0, sizeof(float) * k);
+    prodMatriceTrasAss_64(ds, u, v, numEleU, k);
+    // int i, j;
+    // float sum = 0;
+    // for (i = 0; i < k; i++)
+    // {
+    //     sum = 0;
+    //     for (j = 0; j < numEleU; j++)
+    //     {
+    //         sum += ds[j * k + i] * u[j];
+    //     }
+    //     v[i] = sum;
+    // }
 }
 
 void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k)
 {
-    // prodMatriceAss_64(ds, u, v, rigaDS, k);
-    int i, j;
-    float sum = 0;
-    for (i = 0; i < rigaDS; i++)
-    {
-        sum = 0;
-        for (j = 0; j < k; j++)
-        {
-            sum += ds[i * k + j] * v[j];
-        }
-        u[i] = sum;
-    }
+    prodMatriceAss_64(ds, u, v, rigaDS, k);
+    // int i, j;
+    // float sum = 0;
+    // for (i = 0; i < rigaDS; i++)
+    // {
+    //     sum = 0;
+    //     for (j = 0; j < k; j++)
+    //     {
+    //         sum += ds[i * k + j] * v[j];
+    //     }
+    //     u[i] = sum;
+    // }
 }
 
 void dividi(float *vect, int numEle, float value)
@@ -477,15 +477,15 @@ void dividi(float *vect, int numEle, float value)
 
 void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
 {
-    // aggiornaDatasetAss_64(ds, u, v, n, k);
-    int i, j;
-    for (i = 0; i < n; i++)
-    {
-        for (j = 0; j < k; j++)
-        {
-            ds[i * k + j] -= u[i] * v[j];
-        }
-    }
+    aggiornaDatasetAss_64(ds, u, v, n, k);
+    // int i, j;
+    // for (i = 0; i < n; i++)
+    // {
+    //     for (j = 0; j < k; j++)
+    //     {
+    //         ds[i * k + j] -= u[i] * v[j];
+    //     }
+    // }
 }
 
 float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h)
@@ -536,17 +536,17 @@ void pca(params *input)
             prodottoMatriceTrasp(v, input->ds, u, input->n, input->k);
 
             t = calcolaT(u, input->n);
-            dividi(v, input->k, t);
-            // dividiAss_64(v, input->k, &t);
+            // dividi(v, input->k, t);
+            dividiAss_64(v, input->k, &t);
             norm = norma(v, input->k);
 
-            dividi(v, input->k, norm);
-            // dividiAss_64(v, input->k, &norm);
+            // dividi(v, input->k, norm);
+            dividiAss_64(v, input->k, &norm);
 
             prodottoMatrice(u, input->ds, input->n, v, input->k);
             tempV = calcolaT(v, input->k);
-            dividi(u, input->n, tempV);
-            // dividiAss_64(u, input->n, &tempV);
+            // dividi(u, input->n, tempV);
+            dividiAss_64(u, input->n, &tempV);
 
             t1 = calcolaT(u, input->n);
 
