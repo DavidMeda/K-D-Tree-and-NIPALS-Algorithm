@@ -26,7 +26,7 @@ float norma(float *vect, int numEle);
 void dividi(float *vect, int numEle, float value);
 void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v);
 float *calcoloQ(MATRIX, MATRIX, int, int, int);
-int indexList = 0;
+int indexList = 0, kOld = 0;
 
 extern void euclideanDistanceAss(MATRIX, int, MATRIX, int, int, float *);
 // extern void calcolaTAss(float *vect, int numEle, float *result);
@@ -340,6 +340,7 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
     root->medianCoordinate = ds[indexSorted[indexMedian] * k + cut]; //valore di coordinata del punto mediano
     root->indexMedianPoint = indexSorted[indexMedian];               //indice del punto mediano nel dataset
     root->region = findRegion(ds, end, k);
+
     int numEleSx = indexMedian;
     int numEleDx = end - indexMedian - 1;
 
@@ -579,6 +580,7 @@ void pca(params *input)
     free_block(input->ds);
     input->ds = input->U;
     float *newQS = calcoloQ(input->qs, input->V, input->nq, input->k, input->h);
+    kOld = input->k;
     input->k = input->h;
     free_block(input->qs);
     input->qs = newQS;
@@ -612,14 +614,71 @@ void kdtree(params *input)
 float distance(float *h, MATRIX qs, int id_qs, int k, float *p)
 {
 
-    for (int i = 0; i < k; i++)
+    int repeat = k / 4, left = k % 4, i = 0;
+
+    while (repeat--)
     {
+        //blocco 1
         if (qs[k * id_qs + i] <= h[i * 2])
             p[i] = h[i * 2];
         else if (qs[k * id_qs + i] >= h[(i * 2) + 1])
             p[i] = h[(i * 2) + 1];
         else
             p[i] = qs[k * id_qs + i];
+
+        //blocco2
+        if (qs[k * id_qs + (i + 1)] <= h[(i + 1) * 2])
+            p[(i + 1)] = h[(i + 1) * 2];
+        else if (qs[k * id_qs + (i + 1)] >= h[((i + 1) * 2) + 1])
+            p[(i + 1)] = h[((i + 1) * 2) + 1];
+        else
+            p[(i + 1)] = qs[k * id_qs + (i + 1)];
+
+        //blocco 3
+        if (qs[k * id_qs + (i + 2)] <= h[(i + 2) * 2])
+            p[(i + 2)] = h[(i + 2) * 2];
+        else if (qs[k * id_qs + (i + 2)] >= h[((i + 2) * 2) + 1])
+            p[(i + 2)] = h[((i + 2) * 2) + 1];
+        else
+            p[(i + 2)] = qs[k * id_qs + (i + 2)];
+
+        //blocco 4
+        if (qs[k * id_qs + (i + 3)] <= h[(i + 3) * 2])
+            p[(i + 3)] = h[(i + 3) * 2];
+        else if (qs[k * id_qs + (i + 3)] >= h[((i + 3) * 2) + 1])
+            p[(i + 3)] = h[((i + 3) * 2) + 1];
+        else
+            p[(i + 3)] = qs[k * id_qs + (i + 3)];
+
+        i += 4;
+    }
+
+    switch (left)
+    {
+    case 3:
+        if (qs[k * id_qs + (i + 2)] <= h[(i + 2) * 2])
+            p[(i + 2)] = h[(i + 2) * 2];
+        else if (qs[k * id_qs + (i + 2)] >= h[((i + 2) * 2) + 1])
+            p[(i + 2)] = h[((i + 2) * 2) + 1];
+        else
+            p[(i + 2)] = qs[k * id_qs + (i + 2)];
+
+    case 2:
+        if (qs[k * id_qs + (i + 1)] <= h[(i + 1) * 2])
+            p[(i + 1)] = h[(i + 1) * 2];
+        else if (qs[k * id_qs + (i + 1)] >= h[((i + 1) * 2) + 1])
+            p[(i + 1)] = h[((i + 1) * 2) + 1];
+        else
+            p[(i + 1)] = qs[k * id_qs + (i + 1)];
+
+    case 1:
+        if (qs[k * id_qs + i] <= h[i * 2])
+            p[i] = h[i * 2];
+        else if (qs[k * id_qs + i] >= h[(i * 2) + 1])
+            p[i] = h[(i * 2) + 1];
+        else
+            p[i] = qs[k * id_qs + i];
+    case 0:;
     }
     float res = 0;
     // euclideanDistance(qs, id_qs, p, 0, k);
@@ -882,7 +941,11 @@ int main(int argc, char const *argv[])
         t = clock() - t;
         time = ((float)t) / CLOCKS_PER_SEC;
         sprintf(fname, "%s.U", dsname);
+        //salvo U di dimensioni (n, h)
+        save_data(fname, input->U, input->n, input->k);
         sprintf(fname, "%s.V", dsname);
+        //salvo V di dimensioni (k, h)
+        save_data(fname, input->V, kOld, input->k);
     }
     else
         time = -1;
