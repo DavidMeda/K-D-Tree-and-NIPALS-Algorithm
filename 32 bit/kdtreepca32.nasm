@@ -285,10 +285,10 @@ aggiornaDatasetAss:
 ;     ret                         ; torna alla funzione C chiamante
 
 
-;   prodottoMatriceAss: moltiplica matrice ds per il vettore colonna di V 
+;   prodMatriceAss: moltiplica matrice ds per il vettore colonna di V 
 ;   il risultato viene scritto in una colle della matrice U
 
-global prodottoMatriceAss
+global prodMatriceAss
 
 datasetProd      equ     8
 VProd      equ     12
@@ -296,7 +296,7 @@ UProd       equ     16
 nProd	equ		20              ; parametro riga i che scorre per le righe di ds
 kProd		equ		24
 
-prodottoMatriceAss:
+prodMatriceAss:
 
         ; ------------------------------------------------------------
         ; Sequenza di ingresso nella funzione
@@ -397,97 +397,95 @@ prodottoMatriceAss:
         ret                         ; torna alla funzione C chiamante
 
 
-global euc_dist
+global euclideanDistanceAss
 
-dsecu      equ      8
-i1ecu      equ     12
-qsecu      equ     16
-i2ecu      equ     20
-kecu       equ     24
-outputecu  equ     28
+dsEucl      equ      8
+i1eucl      equ     12
+qsEucl      equ     16
+i2Eucl      equ     20
+kEucl       equ     24
+outputEucl  equ     28
 
 section .data                             ; Sezione contenente dati inizializzati
 section .bss                              ; Sezione contenente dati non inizializzati
 section .text                             ; Sezione contenente il codice macchina
 
-euc_dist:
-        ; ------------------------------------------------------------
-        ; Sequenza di ingresso nella funzione
-        ; ------------------------------------------------------------
+euclideanDistanceAss:
+        
         push    ebp                         ; salva il Base Pointer
         mov      ebp, esp                    ; il Base Pointer punta al Record di Attivazione corrente
         push    ebx                         ; salva i registri da preservare
         push    esi
         push    edi
-        ; ------------------------------------------------------------
-        ; legge i parametri dal Record di Attivazione corrente
-        ; ------------------------------------------------------------
-        xorps xmm4,xmm4
-        xor     esi, esi               ;esi=variabile iterativa da 0 a k (fisso)
-        mov     edi, [ebp+kecu]        ;edi= k (fisso)
 
-        mov     ecx, [ebp+i1ecu]       ;ecx =i1 var iterativa su ds
+        xorps   xmm4,xmm4
+        xor     esi, esi               ;esi=variabile iterativa da 0 a k (fisso)
+        mov     edi, [ebp+kEucl]        ;edi= k (fisso)
+        mov     ecx, [ebp+i1eucl]       ;ecx =i1 var iterativa su ds
         imul    ecx, edi               ;ecx = i1*k
         imul    ecx, 4                 ;ecx= i1*k*4
-        mov     eax, [ebp+dsecu]       ;eax= ds
+        mov     eax, [ebp+dsEucl]       ;eax= ds
         add     ecx, eax               ;ecx= ds + i1*k*4(fisso)
-
-        mov     edx, [ebp+i2ecu]       ;edx= i2 var iterativa su qs
+        mov     edx, [ebp+i2Eucl]       ;edx= i2 var iterativa su qs
         imul    edx, edi               ;ecx = i2*k
         imul    edx, 4                 ;edx= i2*k*4
-        mov     ebx, [ebp+qsecu]       ;ebx= qs
+        mov     ebx, [ebp+qsEucl]       ;ebx= qs
         add     edx, ebx               ;edx= qs + i2*k*4(fisso)
         mov     eax, edi        ;eax = k
         sub     eax, 16                ;eax= k-16 (fisso)
         
-    loop_q_ecu:     
+    loop16_eucl:     
             cmp     esi, eax              
-            jg       h_add_ecu             
+            jg       hadd_eucl             
+            
             movups  xmm0, [ecx+4*esi] 
             movups  xmm1, [edx+4*esi]
             subps   xmm0, xmm1
             mulps   xmm0, xmm0
             addps   xmm4, xmm0 
+            
             movups  xmm0, [ecx+4*esi+16]    
             movups  xmm1, [edx+4*esi+16]
             subps   xmm0, xmm1
             mulps   xmm0, xmm0
             addps   xmm4, xmm0
+            
             movups  xmm0, [ecx+4*esi+32]   
             movups  xmm1, [edx+4*esi+32]
             subps   xmm0, xmm1
             mulps   xmm0, xmm0
             addps   xmm4, xmm0
+           
             movups  xmm0, [ecx+4*esi+48]   
             movups  xmm1, [edx+4*esi+48]
             subps   xmm0, xmm1
             mulps   xmm0, xmm0
             addps   xmm4, xmm0
+            
             add esi,16
-            jmp     loop_q_ecu 
+            jmp     loop16_eucl 
 
-    h_add_ecu:       
+    hadd_eucl:       
         haddps xmm4, xmm4      ;riduco la somma a un valore solo
         haddps xmm4, xmm4       ;riduco la somma a un valore solo
 
-    loop_r_ecu:
+    loopResto_eucl:
             cmp     esi, edi
-            jge      end_ecu       ;se j == k no loop resto vai a end altrimenti loop_r
+            jge     end_eucl       ;se j == k no loop resto vai a end altrimenti loop_r
+            
             movss   xmm0, [ecx+4*esi] 
-            movss  xmm1, [edx+4*esi]
+            movss   xmm1, [edx+4*esi]
             subss   xmm0,  xmm1       
             mulss   xmm0, xmm0         
             addss   xmm4, xmm0          ;xmm4 registro per somma parziale dei valori   
-            inc esi
-            jmp loop_r_ecu
+            
+            inc     esi
+            jmp     loopResto_eucl
 
-    end_ecu:
-        mov eax,[ebp+outputecu]
-        sqrtss      xmm4, xmm4
-        movss     [eax],xmm4      ; eax = risultato
-    ; ------------------------------------------------------------
-    ; Sequenza di uscita dalla funzione
-    ; ------------------------------------------------------------
+    end_eucl:
+        mov     eax,[ebp+outputEucl]
+        sqrtss  xmm4, xmm4
+        movss   [eax],xmm4      ; eax = risultato
 
     pop  edi                  ; ripristina i registri da preservare
     pop  esi
@@ -538,7 +536,7 @@ prodMatriceTrasAss:
             mov     edx, [ebp+kTras]    ; edx = k
             sub     edx, 16              ; edx = k-4
             cmp     edi, edx                      
-            jg     forjResto_tras           ; se j >= k-4
+            jg      forjResto_tras           ; se j >= k-4
         
             movups  xmm1, [eax+4*edi]   ;  xmm1 4 valori di V per scrittura
             movups  xmm2, [ecx +4*edi]  ; xmm2 4 valori di ds
@@ -568,9 +566,6 @@ prodMatriceTrasAss:
             add     edi, 16
             jmp     forj_tras
     
-        ; BforjResto_tras:
-        ;     add     edx, 16          ; edx = k
-        
         forjResto_tras:
             cmp     edi, ebx
             je      Bfori_tras

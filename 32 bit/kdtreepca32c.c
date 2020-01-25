@@ -16,7 +16,7 @@ int findMedian(MATRIX, int *, int, int, int, int);
 struct kdtree_node *buildTreeRoot(MATRIX, int *, int, int, int);
 struct kdtree_node *buildTree(MATRIX, int *, int, int, int, int, int, float *);
 float *findRegion(MATRIX, int, int);
-float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k);
+float euclideanDistance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k);
 int rangeQuery(MATRIX, struct kdtree_node *, MATRIX, int, float, int, int, int *, float *, int *);
 void centraMatrice(MATRIX, int, int);
 float calcolaT(float *vect, int numEle);
@@ -28,11 +28,11 @@ void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v);
 float *calcoloQ(MATRIX, MATRIX, int, int, int);
 int indexList = 0;
 
-extern void euc_dist(MATRIX, int, MATRIX, int, int, float *);
+extern void euclideanDistanceAss(MATRIX, int, MATRIX, int, int, float *);
 // extern void calcolaTAss(float *vect, int numEle, float *result);
 extern void aggiornaDatasetAss(float *ds, float *u, float *v, int n, int k);
 extern void dividiAss(float *, int, float);
-extern void prodottoMatriceAss(float *ds, float *v, float *u, int n, int k);
+extern void prodMatriceAss(float *ds, float *v, float *u, int n, int k);
 extern void prodMatriceTrasAss(float *ds, float *v, float *u, int n, int k);
 
 typedef struct
@@ -453,7 +453,7 @@ void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 
 void prodottoMatrice(float *u, MATRIX ds, int n, float *v, int k)
 {
-    prodottoMatriceAss(ds, v, u, n, k);
+    prodMatriceAss(ds, v, u, n, k);
     // int i, j;
     // float sum = 0;
     // for (i = 0; i < n; i++)
@@ -621,21 +621,23 @@ float distance(float *h, MATRIX qs, int id_qs, int k, float *p)
         else
             p[i] = qs[k * id_qs + i];
     }
-    return euclidean_distance(qs, id_qs, p, 0, k);
-    ;
-}
-
-float euclidean_distance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
-{
     float res = 0;
-    // for (int i = 0; i < k; i++)
-    // {
-    //     res = res + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
-    // }
-    // return  sqrt(res);
-    euc_dist(ds, id_ds, qs, id_qs, k, &res);
+    // euclideanDistance(qs, id_qs, p, 0, k);
+    euclideanDistanceAss(qs, id_qs, p, 0, k, &res);
     return res;
 }
+
+// float euclideanDistance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
+// {
+//     float res = 0;
+//     // for (int i = 0; i < k; i++)
+//     // {
+//     //     res = res + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
+//     // }
+//     // return  sqrt(res);
+//     euclideanDistanceAss(ds, id_ds, qs, id_qs, k, &res);
+//     return res;
+// }
 
 int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float r, int k, int n, int *list, float *point, int *nQA)
 {
@@ -644,8 +646,10 @@ int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float 
     {
         return 0;
     }
-
-    if (euclidean_distance(qs, id_qs, ds, tree->indexMedianPoint, k) <= r)
+    float dist = 0;
+    euclideanDistanceAss(qs, id_qs, ds, tree->indexMedianPoint, k, &dist);
+    // if (euclideanDistance(qs, id_qs, ds, tree->indexMedianPoint, k) <= r)
+    if (dist <= r)
     {
 
         list[id_qs * n + indexList] = tree->indexMedianPoint;
@@ -934,20 +938,20 @@ int main(int argc, char const *argv[])
         {
             //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
             printf("\nQuery Answer %d:\n", input->nQA);
-            for (i = 0; i < input->nq; i++)
-            {
-                for (j = 0; j < input->n; j++)
-                {
-                    if (input->QA[(i * input->n) + j] == -1)
-                        break;
-                    else
-                    {
-                        printf("[%d,  ", i);
-                        printf("%d]\n", input->QA[(i * input->n) + j]);
-                    }
-                }
-                // printf("]\n");
-            }
+            // for (i = 0; i < input->nq; i++)
+            // {
+            //     for (j = 0; j < input->n; j++)
+            //     {
+            //         if (input->QA[(i * input->n) + j] == -1)
+            //             break;
+            //         else
+            //         {
+            //             printf("[%d,  ", i);
+            //             printf("%d]\n", input->QA[(i * input->n) + j]);
+            //         }
+            //     }
+            //     // printf("]\n");
+            // }
             printf("\n");
         }
 

@@ -47,11 +47,6 @@ extern free_block
 	call	free_block
 %endmacro
 
-; ------------------------------------------------------------
-; Funzioni
-; ------------------------------------------------------------
-
-
 
 global euclideanDistanceAss_64
 
@@ -65,13 +60,15 @@ euclideanDistanceAss_64:
 
     xor     rax, rax                ; rax=variabile iterativa da 0 a k (fisso)
     mov     r10, rdx		        ; r10 = k      
-    sub     r10, 32                 ;r10= k-32 (fisso)
-    xorps   xmm2,xmm2               ; azzero registro accumulatore
+    mov     r11, rdx                ; r11 = k
+    sub     r11, 8                  ; r11 = k - 8
+    sub     r10, 32                 ; r10= k-32 
+    vxorps  xmm2,xmm2               ; azzero registro accumulatore
     vxorps  ymm2,ymm2               ; azzero registro accumulatore
 
     loop32_eucl:     
         cmp     rax, r10             
-        jg      hadd_eucl 
+        jg      loop8_eucl 
 
         vmovups  ymm0, [rdi+rax*4]  ;[ds+i*4]
         vmovups  ymm1, [rsi+rax*4]  ;[qs+i*4]
@@ -99,6 +96,19 @@ euclideanDistanceAss_64:
         
         add     rax, 32
         jmp     loop32_eucl 
+
+    loop8_eucl:
+        cmp     rax, r11
+        jg      hadd_eucl
+
+        vmovups  ymm0, [rdi+rax*4]  ;[ds+i*4]
+        vmovups  ymm1, [rsi+rax*4]  ;[qs+i*4]
+        vsubps   ymm0, ymm1          
+        vmulps   ymm0, ymm0         
+        vaddps   ymm2, ymm0     
+
+        add     rax, 8
+        jmp     loop8_eucl
 
     hadd_eucl:   
 
