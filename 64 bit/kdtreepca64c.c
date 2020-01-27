@@ -30,7 +30,6 @@ int indexList = 0, kOld = 0;
 
 // funzioni Assembly  AVX
 extern float euclideanDistanceAss_64(MATRIX ds, MATRIX qs, int k);
-// extern float calcolaTAss_64(float *vect, int numEle);
 extern void dividiAss_64(float *vett, int numEle, float *value);
 extern void aggiornaDatasetAss_64(MATRIX ds, float *u, float *v, int n, int k);
 extern void prodMatriceAss_64(float *ds, float *u, float *v, int n, int k);
@@ -52,7 +51,6 @@ typedef struct
     int display;        //1 per stampare i risultati, 0 altrimenti
     MATRIX U;           //matrice U restituita dall'algoritmo PCA
     MATRIX V;           //matrice V restituita dall'algoritmo PCA
-    MATRIX region;      //regione indicizzata da root formata da k coppie (h_min, h_max)
 
     //STRUTTURE OUTPUT MODIFICABILI
     int **QA; //risposte alle query in forma di coppie di interi (id_query, id_vicino)
@@ -240,7 +238,11 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     int cut = liv % k; //variabile di cut per indice colonna da usare
     struct kdtree_node *node = (struct kdtree_node *)get_block(sizeof(struct kdtree_node), 1);
     node->region = get_block(sizeof(float), 2 * k);
-
+    if (node == NULL || node->region == NULL)
+    {
+        printf("NO MEMORIA NODO\n");
+        exit(1);
+    }
     memcpy(node->region, regionp, sizeof(float) * 2 * k);
     int oldCut = (liv - 1) % k;
     node->region[2 * (oldCut)] = ds[indexSorted[start] * k + (oldCut)];
@@ -296,6 +298,11 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
     int indexMedian = findMedian(ds, indexSorted, 0, (end - 1) / 2, k, cut);
 
     struct kdtree_node *root = (struct kdtree_node *)get_block(sizeof(struct kdtree_node), 1);
+    if (root == NULL)
+    {
+        printf("NO MEMORIA NODO\n");
+        exit(1);
+    }
     root->medianCoordinate = ds[indexSorted[indexMedian] * k + cut]; //valore di coordinata del punto mediano
     root->indexMedianPoint = indexSorted[indexMedian];               //indice del punto mediano nel dataset
     root->region = findRegion(ds, end, k);
@@ -390,13 +397,14 @@ float norma(float *vect, int numEle)
     {
         acc += vect[i] * vect[i];
     }
-    return sqrtf(acc);
+    return sqrt(acc);
 }
 
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 {
-    memset(v, 0, sizeof(float) * k);
-    prodMatriceTrasAss_64(ds, u, v, numEleU, k);
+    // memset(v, 0, sizeof(float) * k);
+    // prodMatriceTrasAss_64(ds, u, v, numEleU, k);
+
     // int i, j;
     // float sum = 0;
     // for (i = 0; i < k; i++)
@@ -412,7 +420,8 @@ void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 
 void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k)
 {
-    prodMatriceAss_64(ds, u, v, rigaDS, k);
+    // prodMatriceAss_64(ds, u, v, rigaDS, k);
+
     // int i, j;
     // float sum = 0;
     // for (i = 0; i < rigaDS; i++)
@@ -429,15 +438,16 @@ void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k)
 void dividi(float *vect, int numEle, float value)
 {
 
-    for (int i = 0; i < numEle; i++)
-    {
-        vect[i] = vect[i] / value;
-    }
+    // for (int i = 0; i < numEle; i++)
+    // {
+    //     vect[i] = vect[i] / value;
+    // }
 }
 
 void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
 {
-    aggiornaDatasetAss_64(ds, u, v, n, k);
+    // aggiornaDatasetAss_64(ds, u, v, n, k);
+
     // int i, j;
     // for (i = 0; i < n; i++)
     // {
@@ -454,7 +464,7 @@ float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h)
     float *q1 = (float *)get_block(sizeof(float), h * nq);
     if (q1 == NULL)
     {
-        printf("NO MEMORIA\n");
+        printf("NO MEMORIA q1\n");
         exit(1);
     }
     moltiplica(q, V, q1, nq, k, h);
@@ -465,8 +475,6 @@ float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h)
 
 void pca(params *input)
 {
-    // printf("\nINIZIO PCA\n");
-
     centraMatrice(input->ds, input->n, input->k);
     input->V = get_block(sizeof(float), input->k * input->h); //dimensioni (k x h)
     input->U = get_block(sizeof(float), input->n * input->h); // dimensioni (n x h)
@@ -475,11 +483,10 @@ void pca(params *input)
 
     if (input->V == NULL || input->U == NULL || u == NULL || v == NULL)
     {
-        printf("\nNo MEMORIA\n");
+        printf("\nNo MEMORIA PCA\n");
         exit(1);
     }
     int i;
-
     for (i = 0; i < input->n; i++)
     {
         u[i] = input->ds[i * input->k];
@@ -493,7 +500,9 @@ void pca(params *input)
 
         do
         {
-            prodottoMatriceTrasp(v, input->ds, u, input->n, input->k);
+            memset(v, 0, sizeof(float) * input->k);
+            prodMatriceTrasAss_64(input->ds, u, v, input->n, input->k);
+            // prodottoMatriceTrasp(v, input->ds, u, input->n, input->k);
 
             t = calcolaT(u, input->n);
             // dividi(v, input->k, t);
@@ -503,7 +512,9 @@ void pca(params *input)
             // dividi(v, input->k, norm);
             dividiAss_64(v, input->k, &norm);
 
-            prodottoMatrice(u, input->ds, input->n, v, input->k);
+            prodMatriceAss_64(input->ds, u, v, input->n, input->k);
+
+            // prodottoMatrice(u, input->ds, input->n, v, input->k);
             tempV = calcolaT(v, input->k);
             // dividi(u, input->n, tempV);
             dividiAss_64(u, input->n, &tempV);
@@ -516,7 +527,8 @@ void pca(params *input)
 
         } while (diff >= theta * t1);
 
-        aggiornaDataset(input->ds, input->n, input->k, u, v);
+        // aggiornaDataset(input->ds, input->n, input->k, u, v);
+        aggiornaDatasetAss_64(input->ds, u, v, input->n, input->k);
 
         for (int j = 0; j < input->k; j++)
         {
@@ -547,7 +559,7 @@ void kdtree(params *input)
 
     if (indexSorted == NULL)
     {
-        printf("\nNO MEMORIA\n");
+        printf("\nNO MEMORIA indexSorted\n");
         exit(1);
     }
     int i;
@@ -634,36 +646,8 @@ float distance(float *h, MATRIX qs, int id_qs, int k, float *p)
             p[i] = qs[k * id_qs + i];
     case 0:;
     }
-    // return euclideanDistance(qs, id_qs, p, 0, k);
     return euclideanDistanceAss_64(&qs[id_qs * k], p, k);
 }
-
-// float distance(float *h, MATRIX qs, int id_qs, int k, float *p)
-// {
-//     int i = 0;
-//     for (; i < k; i++)
-//     {
-//         if (qs[k * id_qs + i] <= h[i * 2])
-//             p[i] = h[i * 2];
-//         else if (qs[k * id_qs + i] >= h[(i * 2) + 1])
-//             p[i] = h[(i * 2) + 1];
-//         else
-//             p[i] = qs[k * id_qs + i];
-//     }
-//     // return euclideanDistance(qs, id_qs, p, 0, k);
-//     return euclideanDistanceAss_64(&qs[id_qs * k], p, k);
-// }
-
-// float euclideanDistance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k)
-// {
-//     // float res = 0;
-//     // for (int i =0; i < k; i++)
-//     // {
-//     //     res = res + (qs[id_qs * k + i] - ds[id_ds * k + i]) * (qs[id_qs * k + i] - ds[id_ds * k + i]);
-//     // }
-//     // return sqrtf(res);
-//     return euclideanDistanceAss_64(&ds[id_ds * k], &qs[id_qs * k], k);
-// }
 
 int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float r, int k, int n, int *list, float *point, int *nQA)
 {
@@ -695,7 +679,7 @@ int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float 
 
 void range_query(params *input)
 {
-    input->QA = malloc(sizeof(int *) * input->nq);
+    input->QA = get_block(sizeof(int *), input->nq);
     float *point = get_block(sizeof(float), input->k);
     if (input->QA == NULL)
     {
@@ -710,11 +694,11 @@ void range_query(params *input)
     int i;
     for (i = 0; i < input->nq; i++)
     {
-        input->QA[i] = malloc(sizeof(int) * input->n);
+        input->QA[i] = get_block(sizeof(int), input->n);
         rangeQuery(input->ds, input->kdtree, input->qs, i, input->r, input->k, input->n, input->QA[i], point, &input->nQA);
         if (indexList == 0)
         {
-            free(input->QA[i]);
+            free_block(input->QA[i]);
             input->QA[i] = NULL;
         }
         else
@@ -969,7 +953,7 @@ int main(int argc, char const *argv[])
         if (!input->silent && input->display)
         {
             //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
-            printf("\nQuery Answer: %d\n", input->nQA);
+            printf("\nQuery Answer:\n");
             for (i = 0; i < input->nq; i++)
             {
                 if (input->QA[i] != NULL)
@@ -980,8 +964,8 @@ int main(int argc, char const *argv[])
                             break;
                         else
                         {
-                            printf("[%d,  ", i);
-                            printf("%d]\n", input->QA[i][j]);
+                            printf("%d,  ", i);
+                            printf("%d\n", input->QA[i][j]);
                         }
                     }
                 }
