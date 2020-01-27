@@ -54,7 +54,7 @@ typedef struct
     MATRIX region;      //regione indicizzata da root formata da k coppie (h_min, h_max)
 
     //STRUTTURE OUTPUT MODIFICABILI
-    int *QA; //risposte alle query in forma di coppie di interi (id_query, id_vicino)
+    int **QA; //risposte alle query in forma di coppie di interi (id_query, id_vicino)
     int nQA; //numero di risposte alle query
 } params;
 
@@ -112,33 +112,6 @@ MATRIX load_data(char *filename, int *n, int *k)
     return data;
 }
 
-MATRIX read_ris(char *filename)
-{
-    FILE *fp;
-    int rows, cols, status, i;
-
-    fp = fopen(filename, "rb");
-
-    if (fp == NULL)
-    {
-        printf("'%s': bad data file name!\n", filename);
-        exit(0);
-    }
-
-    status = fread(&cols, sizeof(int), 1, fp);
-    status = fread(&rows, sizeof(int), 1, fp);
-
-    int *data = (int *)get_block(sizeof(int), rows * cols);
-    status = fread(data, sizeof(int), rows * cols, fp);
-    fclose(fp);
-    printf("\nQuery answear:\n");
-    for (int i = 0; i < (rows * cols) - 1; i = i + 2)
-    {
-        printf("[%i,%i]\n", data[i], data[i + 1]);
-    }
-    free_block(data);
-}
-
 /*
 * 
 * 	save_data
@@ -172,23 +145,7 @@ void save_data(char *filename, void *X, int n, int k)
     fclose(fp);
 }
 
-void save_matrix(MATRIX a, int col, int rig, char *filename)
-{
-    FILE *fPointer;
-    fPointer = fopen(filename, "w");
-    for (int i = 0; i < rig * col; i++)
-    {
-        if (i % col == 0)
-            fprintf(fPointer, "\n\n");
-        fprintf(fPointer, " %f, ", a[i]);
-    }
-
-    fclose(fPointer);
-}
-
-//save_data_ris(fname, input->QA,input->nQA,2,input->nq,input->n);
-
-void save_data_ris(char *filename, int *X, int n, int k, int n_qs, int n_ds)
+void saveDataVicini(char *filename, int **X, int puntiTot, int n_qs, int n_ds)
 {
     FILE *fp;
     int i;
@@ -196,19 +153,20 @@ void save_data_ris(char *filename, int *X, int n, int k, int n_qs, int n_ds)
     int temp[2];
     if (X != NULL)
     {
-        fwrite(&k, sizeof(int), 1, fp);
-        fwrite(&n, sizeof(int), 1, fp);
+        int col = 2;
+        fwrite(&col, sizeof(int), 1, fp);
+        fwrite(&puntiTot, sizeof(int), 1, fp);
 
         for (i = 0; i < n_qs; i++)
         {
-            temp[0] = i;
-            for (int j = 0; j < n_ds; j++)
+            if (X[i] != NULL)
             {
-                if (X[j + (i * n_ds)] == -1)
-                    break;
-                else
+                temp[0] = i;
+                for (int j = 0; j < n_ds; j++)
                 {
-                    temp[1] = X[j + (i * n_ds)];
+                    if (X[i][j] == -1)
+                        break;
+                    temp[1] = X[i][j];
                     fwrite(temp, sizeof(temp), 1, fp);
                 }
             }
@@ -216,6 +174,7 @@ void save_data_ris(char *filename, int *X, int n, int k, int n_qs, int n_ds)
     }
     fclose(fp);
 }
+
 
 /*  metodi KDTREE
 *
@@ -573,8 +532,6 @@ void pca(params *input)
         }
     }
 
-    // save_matrix(input->V, input->h, input->k, "MatrixV_32Ass");
-    // save_matrix(input->U, input->h, input->n, "MatrixU_32Ass");
     free_block(u);
     free_block(v);
     free_block(input->ds);
@@ -707,14 +664,16 @@ int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float 
     }
     float dist = 0;
     euclideanDistanceAss(qs, id_qs, ds, tree->indexMedianPoint, k, &dist);
-    // if (euclideanDistance(qs, id_qs, ds, tree->indexMedianPoint, k) <= r)
+
     if (dist <= r)
     {
-
-        list[id_qs * n + indexList] = tree->indexMedianPoint;
+        list[indexList] = tree->indexMedianPoint;
+        // printf(" trovato elemento in lista [%d] = %d ", indexList, list[indexList]);
         indexList++;
+
+        // list[id_qs * n / 2 + indexList] = tree->indexMedianPoint;
         *nQA = *nQA + 1;
-    };
+    }
     if (tree->left != NULL)
     {
         rangeQuery(ds, tree->left, qs, id_qs, r, k, n, list, point, nQA);
@@ -731,9 +690,7 @@ int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float 
 
 void range_query(params *input)
 {
-    // input->QA = (int *)get_block(sizeof(int), input->n * input->nq);
-    // input->QA = (int *)malloc(sizeof(int) * input->n * input->nq);
-    input->QA = (int *)_mm_malloc(sizeof(int) * input->n * input->nq, 16);
+    input->QA = malloc(sizeof(int *) * input->nq);
     float *point = get_block(sizeof(float), input->k);
     if (input->QA == NULL)
     {
@@ -748,10 +705,19 @@ void range_query(params *input)
     int i;
     for (i = 0; i < input->nq; i++)
     {
-
-        // printf("\niterazione %d \n", i);
-        rangeQuery(input->ds, input->kdtree, input->qs, i, input->r, input->k, input->n, input->QA, point, &input->nQA);
-        input->QA[i * input->n + indexList] = -1;
+        input->QA[i] = malloc(sizeof(int) * input->n);
+        rangeQuery(input->ds, input->kdtree, input->qs, i, input->r, input->k, input->n, input->QA[i], point, &input->nQA);
+        if (indexList == 0)
+        {
+            // printf("\nlibero spazio per iterazione %d\n", i);
+            free(input->QA[i]);
+            input->QA[i] = NULL;
+        }
+        else
+        {
+            input->QA[i][indexList] = -1;
+        }
+        // input->QA[i * input->n / 2 + indexList] = -1;
         indexList = 0;
     }
     free_block(point);
@@ -1001,26 +967,28 @@ int main(int argc, char const *argv[])
         {
             //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
             printf("\nQuery Answer %d:\n", input->nQA);
-            // for (i = 0; i < input->nq; i++)
-            // {
-            //     for (j = 0; j < input->n; j++)
-            //     {
-            //         if (input->QA[(i * input->n) + j] == -1)
-            //             break;
-            //         else
-            //         {
-            //             printf("[%d,  ", i);
-            //             printf("%d]\n", input->QA[(i * input->n) + j]);
-            //         }
-            //     }
-            //     // printf("]\n");
-            // }
+            for (i = 0; i < input->nq; i++)
+            {
+                if (input->QA[i] != NULL)
+                {
+                    for (j = 0; j < input->n; j++)
+                    {
+                        if (input->QA[i][j] == -1)
+                            break;
+                        else
+                        {
+                            printf("[%d,  ", i);
+                            printf("%d]\n", input->QA[i][j]);
+                        }
+                    }
+                }
+            }
             printf("\n");
         }
 
         sprintf(fname, "%s.qa", input->filename);
-        save_data_ris(fname, input->QA, input->nQA, 2, input->nq, input->n);
-        // read_ris(fname);
+        saveDataVicini(fname, input->QA, input->nQA, input->nq, input->n);
+
     }
 
     if (!input->silent)
