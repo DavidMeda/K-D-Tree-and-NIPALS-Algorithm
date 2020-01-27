@@ -55,7 +55,7 @@ typedef struct
 
     //STRUTTURE OUTPUT MODIFICABILI
     int **QA; //risposte alle query in forma di coppie di interi (id_query, id_vicino)
-    int nQA; //numero di risposte alle query
+    int nQA;  //numero di risposte alle query
 } params;
 
 struct kdtree_node
@@ -175,7 +175,6 @@ void saveDataVicini(char *filename, int **X, int puntiTot, int n_qs, int n_ds)
     fclose(fp);
 }
 
-
 /*  metodi KDTREE
 *
 */
@@ -241,6 +240,17 @@ struct kdtree_node *buildTree(MATRIX ds, int *indexSorted, int liv, int start, i
     struct kdtree_node *node = (struct kdtree_node *)get_block(sizeof(struct kdtree_node), 1);
     node->region = get_block(sizeof(float), 2 * k);
 
+    if (node == NULL)
+    {
+        printf("NO MEMORIA NODO\n");
+        exit(1);
+    }
+    if (node->region == NULL)
+    {
+        printf("NO MEMORIA REGION\n");
+        exit(1);
+    }
+
     memcpy(node->region, regionp, sizeof(float) * 2 * k);
     int oldCut = (liv - 1) % k;
     node->region[2 * (oldCut)] = ds[indexSorted[start] * k + (oldCut)];
@@ -296,6 +306,13 @@ struct kdtree_node *buildTreeRoot(MATRIX ds, int *indexSorted, int liv, int end,
     int indexMedian = findMedian(ds, indexSorted, 0, (end - 1) / 2, k, cut);
 
     struct kdtree_node *root = (struct kdtree_node *)get_block(sizeof(struct kdtree_node), 1);
+
+    if (root == NULL)
+    {
+        printf("NO MEMORIA ROOT\n");
+        exit(1);
+    }
+
     root->medianCoordinate = ds[indexSorted[indexMedian] * k + cut]; //valore di coordinata del punto mediano
     root->indexMedianPoint = indexSorted[indexMedian];               //indice del punto mediano nel dataset
     root->region = findRegion(ds, end, k);
@@ -391,13 +408,14 @@ float norma(float *vect, int numEle)
     {
         acc += vect[i] * vect[i];
     }
-    return sqrtf(acc);
+    return sqrt(acc);
 }
 
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 {
-    memset(v, 0, sizeof(float) * k);
-    prodMatriceTrasAss(ds, v, u, numEleU, k);
+    // memset(v, 0, sizeof(float) * k);
+    // prodMatriceTrasAss(ds, v, u, numEleU, k);
+
     // int i, j;
     // float sum = 0;
     // for (i = 0; i < k; i++)
@@ -413,7 +431,8 @@ void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
 
 void prodottoMatrice(float *u, MATRIX ds, int n, float *v, int k)
 {
-    prodMatriceAss(ds, v, u, n, k);
+    // prodMatriceAss(ds, v, u, n, k);
+
     // int i, j;
     // float sum = 0;
     // for (i = 0; i < n; i++)
@@ -439,7 +458,8 @@ void dividi(float *vect, int numEle, float value)
 
 void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
 {
-    aggiornaDatasetAss(ds, u, v, n, k);
+    // aggiornaDatasetAss(ds, u, v, n, k);
+
     // int i, j;
     // for (i = 0; i < n; i++)
     // {
@@ -496,7 +516,9 @@ void pca(params *input)
 
         do
         {
-            prodottoMatriceTrasp(v, input->ds, u, input->n, input->k);
+            memset(v, 0, sizeof(float) * input->k);
+            prodMatriceTrasAss(input->ds, v, u, input->n, input->k);
+            // prodottoMatriceTrasp(v, input->ds, u, input->n, input->k);
 
             t = calcolaT(u, input->n);
             // dividi(v, input->k, t);
@@ -506,7 +528,8 @@ void pca(params *input)
             // dividi(v, input->k, norm);
             dividiAss(v, input->k, norm);
 
-            prodottoMatrice(u, input->ds, input->n, v, input->k);
+            prodMatriceAss(input->ds, v, u, input->n, input->k);
+            // prodottoMatrice(u, input->ds, input->n, v, input->k);
             tempV = calcolaT(v, input->k);
             // dividi(u, input->n, tempV);
             dividiAss(u, input->n, tempV);
@@ -519,7 +542,8 @@ void pca(params *input)
 
         } while (diff >= theta * t1);
 
-        aggiornaDataset(input->ds, input->n, input->k, u, v);
+        aggiornaDatasetAss(input->ds, u, v, input->n, input->k);
+        // aggiornaDataset(input->ds, input->n, input->k, u, v);
 
         for (int j = 0; j < input->k; j++)
         {
@@ -550,7 +574,7 @@ void kdtree(params *input)
 
     if (indexSorted == NULL)
     {
-        printf("\nNO MEMORIA\n");
+        printf("\nNO MEMORIA INDEXSORTED\n");
         exit(1);
     }
     int i;
@@ -638,7 +662,6 @@ float distance(float *h, MATRIX qs, int id_qs, int k, float *p)
     case 0:;
     }
     float res = 0;
-    // euclideanDistance(qs, id_qs, p, 0, k);
     euclideanDistanceAss(qs, id_qs, p, 0, k, &res);
     return res;
 }
@@ -662,16 +685,13 @@ int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float 
     {
         return 0;
     }
+
     float dist = 0;
     euclideanDistanceAss(qs, id_qs, ds, tree->indexMedianPoint, k, &dist);
-
     if (dist <= r)
     {
         list[indexList] = tree->indexMedianPoint;
-        // printf(" trovato elemento in lista [%d] = %d ", indexList, list[indexList]);
         indexList++;
-
-        // list[id_qs * n / 2 + indexList] = tree->indexMedianPoint;
         *nQA = *nQA + 1;
     }
     if (tree->left != NULL)
@@ -709,7 +729,6 @@ void range_query(params *input)
         rangeQuery(input->ds, input->kdtree, input->qs, i, input->r, input->k, input->n, input->QA[i], point, &input->nQA);
         if (indexList == 0)
         {
-            // printf("\nlibero spazio per iterazione %d\n", i);
             free(input->QA[i]);
             input->QA[i] = NULL;
         }
@@ -717,7 +736,6 @@ void range_query(params *input)
         {
             input->QA[i][indexList] = -1;
         }
-        // input->QA[i * input->n / 2 + indexList] = -1;
         indexList = 0;
     }
     free_block(point);
@@ -966,7 +984,7 @@ int main(int argc, char const *argv[])
         if (!input->silent && input->display)
         {
             //NB: il codice non assume che QA sia ordinata per query, in caso lo sia ottimizzare il codice
-            printf("\nQuery Answer %d:\n", input->nQA);
+            printf("\nQuery Answer:\n");
             for (i = 0; i < input->nq; i++)
             {
                 if (input->QA[i] != NULL)
@@ -977,8 +995,8 @@ int main(int argc, char const *argv[])
                             break;
                         else
                         {
-                            printf("[%d,  ", i);
-                            printf("%d]\n", input->QA[i][j]);
+                            printf("%d,  ", i);
+                            printf("%d\n", input->QA[i][j]);
                         }
                     }
                 }
@@ -988,7 +1006,6 @@ int main(int argc, char const *argv[])
 
         sprintf(fname, "%s.qa", input->filename);
         saveDataVicini(fname, input->QA, input->nQA, input->nq, input->n);
-
     }
 
     if (!input->silent)

@@ -38,7 +38,6 @@ extern free_block
 ; ------------------------------------------------------------
 
 ;   questa funzione divide ogni elemento di un vettore per un numero dato
-
 global dividiAss
 
 vett        equ     8
@@ -207,84 +206,6 @@ aggiornaDatasetAss:
         ret                         ; torna alla funzione C chiamante
 
 
-
-
-; global calcolaTAss
-
-; vect      equ     8
-; numEle  equ     12
-; result  equ     16
-; dim		equ		4
-; UNROLL  equ     4
-
-; calcolaTAss:
-
-;     push	ebp                 ; salva il Base Pointer
-;     mov		ebp, esp            ; il Base Pointer punta al Record di Attivazione corrente
-;     push	ebx                 ; salva i registri da preservare
-;     push	esi
-;     push	edi
-
-;     mov     eax, [ebp+vect]       ; eax = index base vettore
-;     mov     ebx, [ebp+numEle]       ; ebx = size vettore
-;     sub     ebx, 16         ; ebx = size - 16
-
-;     xor     esi, esi                ; variabile i di iterazione
-;     xorps   xmm0, xmm0              ; xmm0 somme parziali
-
-
-;     loop_quo:
-;         cmp     esi, ebx
-;         jg      h_add_2
-
-;         ;prendo 16 valori consecutivi
-;         movups  xmm1, [eax+4*esi]                ; [vect + 4*i ]
-;         mulps   xmm1, xmm1
-;         addps   xmm0, xmm1
-
-;         movups  xmm2, [eax+4*esi+16]   ; [vect + 4*i  + 16]
-;         mulps   xmm2, xmm2
-;         addps   xmm0, xmm2
-
-;         movups  xmm3, [eax+4*esi+32]   ; [vect + 4*i  + 32]
-;         mulps   xmm3, xmm3
-;         addps   xmm0, xmm3
-
-;         movups  xmm4, [eax+4*esi+48]   ; [vect + 4*i  + 48]
-;         mulps   xmm4, xmm4
-;         addps   xmm0, xmm4
-
-;         add esi, 16
-;         jmp loop_quo
-
-;     h_add_2:
-;         haddps  xmm0, xmm0                      ; riduzione somma
-;         haddps  xmm0, xmm0                      ; riduzione somma
-;         mov     ebx, [ebp+numEle]               ; ebx = size elem
-    
-;     loop_rest:
-;         cmp     esi, ebx
-;         jge     end_2
-
-;         movss   xmm1, [eax+esi*4]               ;[vect + i*4] 
-;         mulss   xmm1, xmm1
-;         addss   xmm0, xmm1
-
-;         inc     esi
-;         jmp loop_rest
-
-;     end_2:
-;         mov     eax, [ebp+result]
-;         movss   [eax], xmm0
-
-;     pop	edi                     ; ripristina i registri da preservare
-;     pop	esi
-;     pop	ebx
-;     mov	esp, ebp                ; ripristina lo Stack Pointer
-;     pop	ebp                     ; ripristina il Base Pointer
-;     ret                         ; torna alla funzione C chiamante
-
-
 ;   prodMatriceAss: moltiplica matrice ds per il vettore colonna di V 
 ;   il risultato viene scritto in una colle della matrice U
 
@@ -298,19 +219,12 @@ kProd		equ		24
 
 prodMatriceAss:
 
-        ; ------------------------------------------------------------
-        ; Sequenza di ingresso nella funzione
-        ; ------------------------------------------------------------
-       
         push	ebp                 ; salva il Base Pointer
         mov		ebp, esp            ; il Base Pointer punta al Record di Attivazione corrente
         push	ebx                 ; salva i registri da preservare
         push	esi
         push	edi
         
-        ; ------------------------------------------------------------
-        ; legge i parametri dal Record di Attivazione corrente
-        ; ------------------------------------------------------------
         mov		edx, [ebp+nProd]	    ; edx = n     
         xor     edi, edi             ; i = var iterativa da 0 a n
         mov     ebx, [ebp+VProd]        ; ebx = V        
