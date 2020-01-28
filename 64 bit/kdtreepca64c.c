@@ -59,9 +59,9 @@ typedef struct
 
 struct kdtree_node
 {
-    float medianCoordinate; //coordinata cut per il punto mediano
-    int indexMedianPoint;
-    float *region;
+    float medianCoordinate; //valore di coordinata cut per il punto mediano
+    int indexMedianPoint;   //indice di riga del punto mediano
+    float *region;          //regione indicizzata da root formata da k coppie (h_min, h_max)
     struct kdtree_node *left, *right;
 };
 
@@ -83,6 +83,16 @@ MATRIX alloc_matrix(int rows, int cols)
 void dealloc_matrix(MATRIX mat)
 {
     free_block(mat);
+}
+
+void deallocate(KDTREE tree)
+{
+    if (tree == NULL)
+        return;
+    deallocate(tree->right);
+    deallocate(tree->left);
+    free_block(tree->region);
+    free_block(tree);
 }
 
 MATRIX load_data(char *filename, int *n, int *k)
@@ -978,6 +988,41 @@ int main(int argc, char const *argv[])
 
     if (!input->silent)
         printf("\nDone.\n");
+
+    if (input->QA != NULL)
+    {
+        for (int i = 0; i < input->nq; i++)
+        {
+            if (input->QA[i] != NULL)
+            {
+                free_block(input->QA[i]);
+            }
+        }
+        free_block(input->QA);
+    }
+    if (input->U != NULL)
+    {
+        free_block(input->U);
+    }
+    if (input->V != NULL)
+    {
+        free_block(input->V);
+    }
+    if (input->ds != NULL && input->h <= 0)
+    {
+        free_block(input->ds);
+    }
+    if (input->qs != NULL)
+    {
+        free_block(input->qs);
+    }
+
+    if (input->kdtree != NULL)
+    {
+        deallocate(input->kdtree);
+    }
+
+    free(input);
 
     return 0;
 }
