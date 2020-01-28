@@ -29,7 +29,6 @@ float *calcoloQ(MATRIX, MATRIX, int, int, int);
 int indexList = 0, kOld = 0;
 
 extern void euclideanDistanceAss(MATRIX, int, MATRIX, int, int, float *);
-// extern void calcolaTAss(float *vect, int numEle, float *result);
 extern void aggiornaDatasetAss(float *ds, float *u, float *v, int n, int k);
 extern void dividiAss(float *, int, float);
 extern void prodMatriceAss(float *ds, float *v, float *u, int n, int k);
@@ -51,7 +50,6 @@ typedef struct
     int display;        //1 per stampare i risultati, 0 altrimenti
     MATRIX U;           //matrice U restituita dall'algoritmo PCA
     MATRIX V;           //matrice V restituita dall'algoritmo PCA
-    MATRIX region;      //regione indicizzata da root formata da k coppie (h_min, h_max)
 
     //STRUTTURE OUTPUT MODIFICABILI
     int **QA; //risposte alle query in forma di coppie di interi (id_query, id_vicino)
@@ -60,9 +58,9 @@ typedef struct
 
 struct kdtree_node
 {
-    float medianCoordinate; //coordinata cut per il punto mediano
-    int indexMedianPoint;
-    float *region;
+    float medianCoordinate; //valore di coordinata cut per il punto mediano
+    int indexMedianPoint;   //indice di riga del punto mediano
+    float *region;          //regione indicizzata da root formata da k coppie (h_min, h_max)
     struct kdtree_node *left, *right;
 };
 
@@ -84,6 +82,16 @@ MATRIX alloc_matrix(int rows, int cols)
 void dealloc_matrix(MATRIX mat)
 {
     free_block(mat);
+}
+
+void deallocate(KDTREE tree)
+{
+    if (tree == NULL)
+        return;
+    deallocate(tree->right);
+    deallocate(tree->left);
+    free_block(tree->region);
+    free_block(tree);
 }
 
 MATRIX load_data(char *filename, int *n, int *k)
@@ -710,7 +718,7 @@ int rangeQuery(MATRIX ds, struct kdtree_node *tree, MATRIX qs, int id_qs, float 
 
 void range_query(params *input)
 {
-    input->QA = malloc(sizeof(int *) * input->nq);
+    input->QA = get_block(sizeof(int *), input->nq);
     float *point = get_block(sizeof(float), input->k);
     if (input->QA == NULL)
     {
@@ -725,11 +733,11 @@ void range_query(params *input)
     int i;
     for (i = 0; i < input->nq; i++)
     {
-        input->QA[i] = malloc(sizeof(int) * input->n);
+        input->QA[i] = get_block(sizeof(int), input->n);
         rangeQuery(input->ds, input->kdtree, input->qs, i, input->r, input->k, input->n, input->QA[i], point, &input->nQA);
         if (indexList == 0)
         {
-            free(input->QA[i]);
+            free_block(input->QA[i]);
             input->QA[i] = NULL;
         }
         else
@@ -1010,6 +1018,41 @@ int main(int argc, char const *argv[])
 
     if (!input->silent)
         printf("\nDone.\n");
+
+    if (input->QA != NULL)
+    {
+        for (int i = 0; i < input->nq; i++)
+        {
+            if (input->QA[i] != NULL)
+            {
+                free_block(input->QA[i]);
+            }
+        }
+        free_block(input->QA);
+    }
+    if (input->U != NULL)
+    {
+        free_block(input->U);
+    }
+    if (input->V != NULL)
+    {
+        free_block(input->V);
+    }
+    if (input->ds != NULL && input->h <= 0)
+    {
+        free_block(input->ds);
+    }
+    if (input->qs != NULL)
+    {
+        free_block(input->qs);
+    }
+
+    if (input->kdtree != NULL)
+    {
+        deallocate(input->kdtree);
+    }
+
+    free(input);
 
     return 0;
 }
