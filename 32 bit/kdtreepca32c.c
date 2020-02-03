@@ -141,8 +141,8 @@ void save_data(char *filename, void *X, int n, int k)
     fp = fopen(filename, "wb");
     if (X != NULL)
     {
-        fwrite(&n, 4, 1, fp);
         fwrite(&k, 4, 1, fp);
+        fwrite(&n, 4, 1, fp);
         for (i = 0; i < n; i++)
         {
             fwrite(X, 4, k, fp);
@@ -369,10 +369,12 @@ void moltiplica(MATRIX q, MATRIX V, float *c, int nq, int k, int h)
     {
         for (j = 0; j < h; j++)
         {
+            float sum = 0;
             for (z = 0; z < k; z++)
             {
-                c[i * h + j] += q[i * k + z] * V[z * h + j];
+                sum += q[i * k + z] * V[z * h + j];
             }
+            c[i * h + j] = sum;
         }
     }
 }
@@ -420,7 +422,7 @@ float norma(float *vect, int numEle)
     {
         acc += vect[i] * vect[i];
     }
-    return sqrt(acc);
+    return sqrtf(acc);
 }
 
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
@@ -485,6 +487,7 @@ void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
 float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h)
 {
     float *q1 = (float *)get_block(sizeof(float), h * nq);
+    memset(q1, 0, sizeof(float) * h * nq);
     if (q1 == NULL)
     {
         printf("NO MEMORIA newQS\n");
@@ -518,7 +521,7 @@ void pca(params *input)
     {
         u[i] = input->ds[i * input->k];
     }
-    float theta = 0.000335463;
+    float theta = 1e-8;
     float norm = 0, tempV = 0, diff = 0, t = 0, t1 = 0;
     for (i = 0; i < input->h; i++)
     {
@@ -752,7 +755,7 @@ void range_query(params *input)
     free_block(point);
 }
 
-int main(int argc, char const *argv[])
+int main(int argc, char **argv)
 {
 
     char fname[256];
@@ -1014,8 +1017,8 @@ int main(int argc, char const *argv[])
             }
             printf("\n");
         }
-
-        sprintf(fname, "%s.qa", input->filename);
+        // printf("\n %d ", input->nQA);
+        sprintf(fname, "%s.qa", dsname);
         saveDataVicini(fname, input->QA, input->nQA, input->nq, input->n);
     }
 

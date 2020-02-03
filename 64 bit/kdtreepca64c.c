@@ -18,7 +18,7 @@ struct kdtree_node *buildTree(MATRIX, int *, int, int, int, int, int, float *);
 float *findRegion(MATRIX, int, int);
 float euclideanDistance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k);
 int rangeQuery(MATRIX, struct kdtree_node *, MATRIX, int, float, int, int, int *, float *, int *);
-void centraMatrice(MATRIX, int, int, MATRIX, );
+void centraMatrice(MATRIX, int, int, MATRIX, int);
 float calcolaT(float *vect, int numEle);
 void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k);
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k);
@@ -142,8 +142,8 @@ void save_data(char *filename, void *X, int n, int k)
     fp = fopen(filename, "wb");
     if (X != NULL)
     {
-        fwrite(&n, 4, 1, fp);
         fwrite(&k, 4, 1, fp);
+        fwrite(&n, 4, 1, fp);
         for (i = 0; i < n; i++)
         {
             fwrite(X, 4, k, fp);
@@ -411,7 +411,7 @@ float norma(float *vect, int numEle)
     {
         acc += vect[i] * vect[i];
     }
-    return sqrt(acc);
+    return sqrtf(acc);
 }
 
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k)
@@ -504,7 +504,7 @@ void pca(params *input)
     {
         u[i] = input->ds[i * input->k];
     }
-    float theta = 0.000335463;
+    float theta = 1e-8;
     float norm = 0, tempV = 0, diff = 0, t = 0, t1 = 0;
     for (i = 0; i < input->h; i++)
     {
@@ -723,7 +723,7 @@ void range_query(params *input)
     free_block(point);
 }
 
-int main(int argc, char const *argv[])
+int main(int argc, char **argv)
 {
 
     char fname[256];
@@ -984,8 +984,8 @@ int main(int argc, char const *argv[])
                 }
             }
         }
-
-        sprintf(fname, "%s.qa", input->filename);
+        // printf("\n %d ", input->nQA);
+        sprintf(fname, "%s.qa", dsname);
         saveDataVicini(fname, input->QA, input->nQA, input->nq, input->n);
     }
 
