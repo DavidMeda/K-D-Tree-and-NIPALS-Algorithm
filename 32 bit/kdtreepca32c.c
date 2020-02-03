@@ -18,7 +18,7 @@ struct kdtree_node *buildTree(MATRIX, int *, int, int, int, int, int, float *);
 float *findRegion(MATRIX, int, int);
 float euclideanDistance(MATRIX qs, int id_qs, MATRIX ds, int id_ds, int k);
 int rangeQuery(MATRIX, struct kdtree_node *, MATRIX, int, float, int, int, int *, float *, int *);
-void centraMatrice(MATRIX, int, int);
+void centraMatrice(MATRIX, int, int, MATRIX, int);
 float calcolaT(float *vect, int numEle);
 void prodottoMatrice(float *u, MATRIX ds, int rigaDS, float *v, int k);
 void prodottoMatriceTrasp(float *v, MATRIX ds, float *u, int numEleU, int k);
@@ -377,7 +377,7 @@ void moltiplica(MATRIX q, MATRIX V, float *c, int nq, int k, int h)
     }
 }
 
-void centraMatrice(MATRIX ds, int n, int k)
+void centraMatrice(MATRIX ds, int n, int k, MATRIX qs, int nq)
 {
     int i, j;
     float acc = 0;
@@ -395,6 +395,10 @@ void centraMatrice(MATRIX ds, int n, int k)
         for (i = 0; i < n; i++)
         {
             ds[i * k + j] = ds[i * k + j] - mean;
+        }
+        for (int z = 0; z < nq; z++)
+        {
+            qs[z * k + j] = qs[z * k + j] - mean;
         }
     }
 }
@@ -480,7 +484,6 @@ void aggiornaDataset(MATRIX ds, int n, int k, float *u, float *v)
 
 float *calcoloQ(MATRIX q, MATRIX V, int nq, int k, int h)
 {
-    centraMatrice(q, nq, k);
     float *q1 = (float *)get_block(sizeof(float), h * nq);
     if (q1 == NULL)
     {
@@ -498,7 +501,7 @@ void pca(params *input)
 {
     // printf("\nINIZIO PCA\n");
 
-    centraMatrice(input->ds, input->n, input->k);
+    centraMatrice(input->ds, input->n, input->k, input->qs, input->nq);
     input->V = get_block(sizeof(float), input->k * input->h); //dimensioni (k x h)
     input->U = get_block(sizeof(float), input->n * input->h); // dimensioni (n x h)
     float *u = get_block(sizeof(float), input->n);

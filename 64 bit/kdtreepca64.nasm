@@ -150,6 +150,8 @@ dividiAss_64:
 	xor	rax, rax	                ; rax = i
 	vbroadcastss ymm0, [rdx] 		; ymm0 propaga il valore che deve dividere
 	mov		rbx, rsi				; rbx= size vettore
+    mov     r10, rsi                ; r10 = size vettore
+    sub     r10, 8                  ; r10 size - 8
 	sub		rbx, 32					; rbx = size - 32
 
 	loop32_div:

@@ -376,7 +376,7 @@ euclideanDistanceAss:
             mulps   xmm0, xmm0
             addps   xmm4, xmm0
             
-            add esi,16
+            add     esi,16
             jmp     loop16_eucl 
 
     hadd_eucl:       
