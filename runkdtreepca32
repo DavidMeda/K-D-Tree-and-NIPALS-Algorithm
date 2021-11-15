@@ -1,0 +1,8 @@
+#!/bin/bash
+nasm -f elf32 kdtreepca32.nasm
+# gcc -O3 -m32 -msse kdtreepca32.o kdtreepca32c.c -o kdtreepca32c -lm
+gcc -O0 -m32 -msse kdtreepca32.o kdtreepca32c.c -o kdtreepca32c -lm
+#  gcc -O3 -m32 -msse kdtreepca32.o kdtreepca32c.c -o kdtreepca32c -lm
+pars="";
+for arg; do pars=$pars" "$arg; done;
+./kdtreepca32c $pars
